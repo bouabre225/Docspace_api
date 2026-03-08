@@ -40,7 +40,7 @@ class Annonce extends Model
 
     public function commandes()
     {
-        return $this->hasMany(Commandes::class, 'annonce_id');
+        return $this->hasMany(Commande::class, 'annonce_id');
     }
 
     public function avis()
