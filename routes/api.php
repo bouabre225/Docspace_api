@@ -64,7 +64,9 @@ Route::middleware('throttle:login')->group(function () {
     Route::post('/login/2fa', [AuthController::class, 'login2fa']);
 });
 
-
+//mot de passe oublié
+Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
+Route::post('/password/reset',  [AuthController::class, 'resetPassword']);
 
 // Google OAuth
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect']);
