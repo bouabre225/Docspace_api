@@ -37,7 +37,7 @@
       @endif
       <div class="field">
         <div class="label">Message</div>
-        <div class="message-box">{{ $message }}</div>
+        <div class="message-box">{{ $contenu }}</div>
       </div>
     </div>
     <div class="footer">DocSpace — {{ date('d/m/Y H:i') }}</div>
