@@ -12,6 +12,11 @@ use App\Services\Auth\TwoFactorService;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Str;
 
 class AuthController
 {
@@ -199,6 +204,59 @@ class AuthController
         ], 200);
     }
 
+    /**
+     * Mot de passe oublié
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        // On retourne toujours 200 pour ne pas révéler si l'email existe
+        return response()->json([
+            'message' => 'Si cet email existe, un lien de réinitialisation a été envoyé.',
+        ], 200);
+    }
+
+    /**
+     * Reset mot de passe 
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token'                 => 'required',
+            'email'                 => 'required|email',
+            'password'              => 'required|min:8|confirmed',
+            'password_confirmation' => 'required',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'mot_de_passe' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return response()->json(['message' => 'Mot de passe réinitialisé avec succès.']);
+        }
+
+        return response()->json([
+            'message' => match($status) {
+                Password::INVALID_TOKEN => 'Token invalide ou expiré.',
+                Password::INVALID_USER  => 'Aucun compte associé à cet email.',
+                default                 => 'Erreur lors de la réinitialisation.',
+            }
+        ], 422);
+    }
     /**
      * Logout
      */
