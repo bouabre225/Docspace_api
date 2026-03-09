@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignUuid('document_id')->nullable()->constrained('kyc_documents');
             $table->text('commentaire')->nullable();
             $table->string('ip_address', 50)->nullable();
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
         });
         
         DB::statement('ALTER TABLE kyc_audits ADD COLUMN ancien_statut statut_kyc_enum');

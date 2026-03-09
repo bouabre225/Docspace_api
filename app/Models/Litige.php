@@ -8,17 +8,12 @@ use App\Models\Concerns\HasUuid;
 class Litige extends Model
 {
     use HasUuid;
-
-    public $timestamps = false;        // ← la table n'a pas updated_at
-    const CREATED_AT = 'date_signalement'; // ← created_at s'appelle date_signalement
-
     protected $fillable = [
         'commande_id',
         'acheteur_id',
         'motif',
         'preuves',
-        'statut',
-        'date_signalement', // ← ajoute
+        'statut'
     ];
 
     public function commande()

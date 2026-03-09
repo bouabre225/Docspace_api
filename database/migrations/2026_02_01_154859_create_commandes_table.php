@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignUuid('annonce_id')->constrained('annonces');
             $table->integer('quantite');
             $table->decimal('montant', 10, 2);
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
         });
         
         DB::statement('ALTER TABLE commandes ADD COLUMN statut statut_commande_enum DEFAULT \'en_attente\'');

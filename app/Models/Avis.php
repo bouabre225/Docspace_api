@@ -4,14 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\HasUuid;
 
 class Avis extends Model
 {
-    use HasFactory, HasUuid;
-
-    protected $keyType = 'int';
-    public $incrementing = true;
+    use HasFactory;
 
     public $timestamps = false;
     const CREATED_AT = 'created_at';

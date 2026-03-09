@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Commande;
+use App\Models\Commandes;
 use App\Services\paiementService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -13,7 +13,7 @@ class PaiementWebhookController
         private paiementService $service
     ) {}
 
-    public function pay(Commande $commande)
+    public function pay(Commandes $commande)
     {
         $this->authorize('view', $commande);
 

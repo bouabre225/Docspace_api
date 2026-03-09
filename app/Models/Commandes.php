@@ -5,9 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Concerns\HasUuid;
 
-class Commande extends Model
+class Commandes extends Model
 {
     use HasUuid;
+    protected $table = 'commandes';
     
     protected $fillable = [
         'acheteur_id',
@@ -15,12 +16,16 @@ class Commande extends Model
         'annonce_id',
         'quantite',
         'montant',
-        'statut'
+        'statut',
     ];
 
     protected $casts = [
         'montant' => 'decimal:2',
+        'quantite' => 'integer',
+        'created_at' => 'datetime',
     ];
+
+    public $timestamps = false;
 
     public function acheteur()
     {
@@ -34,21 +39,11 @@ class Commande extends Model
 
     public function annonce()
     {
-        return $this->belongsTo(Annonce::class);
+        return $this->belongsTo(Annonce::class, 'annonce_id');
     }
 
     public function paiement()
     {
-        return $this->hasOne(Paiement::class);
-    }
-
-    public function litige()
-    {
-        return $this->hasOne(Litige::class);
-    }
-
-    public function avis()
-    {
-        return $this->hasOne(Avis::class);
+        return $this->hasOne(Paiement::class, 'commande_id');
     }
 }

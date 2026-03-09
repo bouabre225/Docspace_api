@@ -1,9 +1,8 @@
 <?php
 
 use App\Http\Controllers\AnnonceController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MessageController;
-use App\Http\Controllers\CommandeController;
+use App\Http\Controllers\commandeController;
 use App\Http\Controllers\KycController;
 use App\Http\Controllers\PaiementWebhookController;
 use App\Http\Controllers\admin\adminController;
@@ -12,11 +11,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\MeController;
 use App\Http\Controllers\TwoFactorController;
-use App\Http\Controllers\LitigeController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schedule;
-
 
 Route::middleware('auth:sanctum')->prefix('kyc')->group(function () {
     Route::get('/documents', [KycController::class, 'index']);
@@ -25,10 +20,10 @@ Route::middleware('auth:sanctum')->prefix('kyc')->group(function () {
 });
 
 Route::middleware('auth:sanctum')->prefix('commandes')->group(function () {
-    Route::get('/', [CommandeController::class, 'index']);
-    Route::post('/', [CommandeController::class, 'store']);
-    Route::get('/{commande}', [CommandeController::class, 'show']);
-    Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);
+    Route::get('/', [commandeController::class, 'index']);
+    Route::post('/', [commandeController::class, 'store']);
+    Route::get('/{commande}', [commandeController::class, 'show']);
+    Route::post('/{commande}/cancel', [commandeController::class, 'cancel']);
     Route::post('/{commande}/pay', [PaiementWebhookController::class, 'pay']);
 });
 
@@ -44,8 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/annonces/{annonce}', [AnnonceController::class, 'update']);
     Route::delete('/annonces/{annonce}', [AnnonceController::class, 'destroy']);
     Route::get('/messages', [MessageController::class, 'index']);
-    Route::post('/messages', [MessageController::class, 'store']);
     Route::get('/messages/{userId}', [MessageController::class, 'show']);
+    Route::post('/messages', [MessageController::class, 'store']);
 });
 
 Route::get('/', function () {
@@ -98,67 +93,6 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/kyc')->group(fu
     Route::post('/documents/{document}/validate', [adminController::class, 'validateKyc']);
 
 });
-
-//routes notification 
-Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
-    // Liste des notifications (avec filtres ?lu=false&type=commande)
-    Route::get('/', [NotificationController::class, 'index']);
-
-    // Badge : nombre de notifs non lues
-    Route::get('/compteur', [NotificationController::class, 'compteur']);
-
-    // Marquer une notif comme lue
-    Route::patch('/{id}/lire', [NotificationController::class, 'marquerLue']);
-
-    // Marquer toutes les notifs comme lues
-    Route::patch('/lire-tout', [NotificationController::class, 'marquerToutesLues']);
-
-    // Supprimer une notif
-    Route::delete('/{id}', [NotificationController::class, 'destroy']);
-});
-
-Route::middleware('auth:sanctum')->post('/me/fcm-token', function (Request $request) {
-    $request->user()->update(['fcm_token' => $request->fcm_token]);
-    return response()->json(['status' => 200]);
-});
-
-
-//Routes Litiges
-// Routes acheteur / vendeur
-Route::middleware('auth:sanctum')->prefix('litiges')->group(function () {
-    Route::get('/', [LitigeController::class, 'index']);
-    Route::get('/{litige}', [LitigeController::class, 'show']);
-    Route::post('/', [LitigeController::class, 'store']);
-});
-
-// Routes admin
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/litiges')->group(function () {
-    Route::get('/', [LitigeController::class, 'adminIndex']);
-    Route::patch('/{litige}/prendre-en-charge', [LitigeController::class, 'prendreEnCharge']);
-    Route::post('/{litige}/resoudre', [LitigeController::class, 'resoudre']);
-});
-
-
-//route de notif
-// ─── Retry des notifications non envoyées ─────────────
-// Toutes les 10 minutes, retenté les notifs avec sent_at NULL depuis > 5 min
-Schedule::command('notifications:retry-failed')
-    ->everyTenMinutes()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/scheduler.log'));
-
-// ─── Nettoyage des failed_jobs > 30 jours ─────────────
-Schedule::command('queue:flush')
-    ->monthly();
-
-// ─── Nettoyage des notifications lues > 90 jours ──────
-Schedule::call(function () {
-    \App\Models\Notification::where('lu', true)
-        ->where('created_at', '<', now()->subDays(90))
-        ->delete();
-})->weekly()->name('clean-old-notifications')->withoutOverlapping();
-
 
 // Annonces vendeur : INTERDIT si KYC non validé
 /*Route::middleware(['auth:sanctum', 'role:vendeur', 'kyc'])->group(function () {

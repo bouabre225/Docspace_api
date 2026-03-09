@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignUuid('user_id')->constrained('users');
             $table->text('contenu')->nullable();
             $table->boolean('lu')->default(false);
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
         });
         
         DB::statement('ALTER TABLE notifications ADD COLUMN type notification_type_enum');

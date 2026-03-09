@@ -4,14 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\HasUuid;
 
 class Annonce extends Model
 {
-    use HasFactory, HasUuid;
-
-    protected $keyType = 'int';
-    public $incrementing = true;
+    use HasFactory;
 
     public $timestamps = false;
     const CREATED_AT = 'created_at';
@@ -38,17 +34,17 @@ class Annonce extends Model
         return $this->vendeur();
     }
 
-    public function commandes()
-    {
-        return $this->hasMany(Commandes::class, 'annonce_id');
-    }
-
     public function avis()
     {
-        // Pas de hasManyThrough car types UUID/integer incompatibles
-        // On passe par les commandes de l'annonce
-        $commandeIds = $this->commandes()->pluck('id');
-        return Avis::whereIn('commande_id', $commandeIds);
+        // Les avis sont liés aux commandes, pas directement aux annonces
+        return $this->hasManyThrough(
+            Avis::class,
+            Commandes::class,
+            'annonce_id', // Foreign key on commandes table
+            'commande_id', // Foreign key on avis table
+            'id', // Local key on annonces table
+            'id' // Local key on commandes table
+        );
     }
 
     public function messages()
@@ -63,14 +59,13 @@ class Annonce extends Model
 
     public function noteMoyenne()
     {
-        $commandeIds = $this->commandes()->pluck('id');
-        $avis = Avis::whereIn('commande_id', $commandeIds)->get();
-
+        $avis = $this->avis;
         if ($avis->count() === 0) return 0;
-
-        return round(
-            ($avis->sum('note_vendeur') + $avis->sum('note_conformite')) / 2 / $avis->count(),
-            1
-        );
+        
+        $totalNoteVendeur = $avis->sum('note_vendeur');
+        $totalNoteConformite = $avis->sum('note_conformite');
+        $count = $avis->count();
+        
+        return round((($totalNoteVendeur + $totalNoteConformite) / 2) / $count, 1);
     }
 }

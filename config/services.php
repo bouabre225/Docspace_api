@@ -20,10 +20,6 @@ return [
         'base_url' => env('FEDAPAY_BASE_URL', 'https://api.fedapay.com/v1'),
         'webhook_secret' => env('FEDAPAY_WEBHOOK_SECRET'),
     ],
-    
-    'fcm' => [
-        'server_key' => env('FCM_SERVER_KEY'),
-    ],
 
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),

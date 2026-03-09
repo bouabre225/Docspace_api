@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignUuid('annonce_id')->nullable()->constrained('annonces');
             $table->text('contenu')->nullable();
             $table->boolean('lu')->default(false);
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
         });
     }
 

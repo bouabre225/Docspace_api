@@ -23,7 +23,7 @@ return new class extends Migration
             $table->decimal('prix_total', 10, 2)->storedAs('prix_vendeur * 1.08');
             $table->integer('quantite')->default(1);
             $table->string('pays_expedition', 50)->nullable();
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
         });
         
         DB::statement('ALTER TABLE annonces ADD COLUMN etat etat_annonce_enum');

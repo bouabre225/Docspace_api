@@ -8,7 +8,6 @@ use App\Http\Requests\RegisterSellerRequest;
 use App\Http\Requests\Login2faRequest;
 use App\Http\Requests\loginRequest;
 use App\Services\Auth\AuthService;
-use App\Services\Auth\TwoFactorService;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
@@ -30,7 +29,6 @@ class AuthController
 
             //retour de la reponse
             return response()->json([
-                'success' => true,
                 'user' => $user,
                 'token' => $token,
                 'message' => 'User registered successfully',
@@ -38,7 +36,6 @@ class AuthController
 
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
                 'message' => $e->getMessage(),
             ], 409);
         }
@@ -58,7 +55,6 @@ class AuthController
 
             //retour de la reponse
             return response()->json([
-                'success' => true,
                 'user' => $user,
                 'token' => $token,
                 'message' => 'User registered successfully',
@@ -66,7 +62,6 @@ class AuthController
 
         } catch (\Exception $e) {
             return response()->json([
-                'success' => false,
                 'message' => $e->getMessage(),
             ], 409);
         }
@@ -98,7 +93,6 @@ class AuthController
             }
 
             return response()->json([
-                'success' => true,
                 'message' => 'User logged in successfully',
                 'user' => $result['user'],
                 'token' => $result['token'],
@@ -166,7 +160,7 @@ class AuthController
             return response()->json(['message' => 'Challenge expiré ou invalide.'], 400);
         }
 
-        $userId = (string) $challenge['user_id'];
+        $userId = (int) $challenge['user_id'];
         $isAdminFlow = (bool) ($challenge['is_admin'] ?? false);
 
         $user = User::find($userId);
@@ -192,7 +186,6 @@ class AuthController
         );
 
         return response()->json([
-            'success' => true,
             'message' => $isAdminFlow ? 'Admin logged in successfully' : 'User logged in successfully',
             'user' => $issued['user'],
             'token' => $issued['token'],
@@ -213,6 +206,6 @@ class AuthController
         // Supprime le token courant uniquement
         $request->user()->currentAccessToken()?->delete();
 
-        return response()->json(['success' => true, 'message' => 'Déconnecté'], 200);
+        return response()->json(['message' => 'Déconnecté'], 200);
     }
 }

@@ -22,8 +22,8 @@ class CommandeSeeder extends Seeder
                 'acheteur_id' => $acheteurId,
                 'vendeur_id' => $vendeurId,
                 'annonce_id' => $annonce->id,
-                'quantite' => 10,
-                'montant' => 54000.00,
+                'quantite' => 1,
+                'montant' => 5400.00,
                 'created_at' => now(),
             ]);
             

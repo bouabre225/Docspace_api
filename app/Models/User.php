@@ -30,7 +30,6 @@ class User extends Authenticatable
         'email',
         'mot_de_passe',
         'telephone',
-        'fcm_token',
         'pays',
         'devise',
         'adresse',
@@ -50,7 +49,6 @@ class User extends Authenticatable
     protected $hidden = [
         'mot_de_passe',
         'two_factor_secret',
-        'fcm_token',
     ];
 
     /**

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->integer('note_vendeur')->unsigned()->default(5);
             $table->integer('note_conformite')->unsigned()->default(5);
             $table->text('commentaire')->nullable();
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
         });
     }
     /**

@@ -4,11 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Concerns\HasUuid;
 
 class Message extends Model
 {
-    use HasFactory, HasUuid;
+    use HasFactory;
 
     public $timestamps = false;
     const CREATED_AT = 'created_at';

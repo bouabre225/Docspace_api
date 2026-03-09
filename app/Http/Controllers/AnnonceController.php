@@ -46,19 +46,8 @@ class AnnonceController extends Controller
     // Afficher une annonce
     public function show(Annonce $annonce)
     {
-        // Charge manuellement les avis via les commandes
-        $annonce->load(['vendeur', 'images']);
-        
-        $commandeIds = $annonce->commandes()->pluck('id');
-        $avis = \App\Models\Avis::whereIn('commande_id', $commandeIds)
-            ->with('vendeur:id,nom,avatar')  // si tu as une relation vendeur sur Avis
-            ->get();
-
-        return response()->json([
-            ...$annonce->toArray(),
-            'avis' => $avis,
-            'note_moyenne' => $annonce->noteMoyenne(),
-        ]);
+        $annonce->load(['vendeur', 'avis.vendeur', 'images']);
+        return response()->json($annonce);
     }
 
     // Mettre à jour
@@ -69,12 +58,12 @@ class AnnonceController extends Controller
         }
 
         $validated = $request->validate([
-            'titre' => 'nullable|string|max:200',
+            'titre' => 'required|string|max:200',
             'description' => 'nullable|string',
-            'prix_vendeur' => 'nullable|numeric|min:0',
+            'prix_vendeur' => 'required|numeric|min:0',
             'categorie' => 'nullable|string|max:100',
-            'etat' => 'nullable|string',
-            'quantite' => 'nullable|integer|min:1',
+            'etat' => 'required|string',
+            'quantite' => 'required|integer|min:1',
             'pays_expedition' => 'nullable|string|max:50'
         ]);
 
@@ -110,7 +99,7 @@ class AnnonceController extends Controller
                   ->orWhere('description', 'ILIKE', "%{$query}%")
                   ->orWhere('categorie', 'ILIKE', "%{$query}%");
             })
-            ->with('vendeur', 'images')
+            ->with('vendeur', 'avis')
             ->latest('created_at')
             ->paginate(12);
 

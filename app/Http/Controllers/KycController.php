@@ -31,7 +31,7 @@ class KycController
     {
         $validated = $request->validate([
             'type_document' => 'required|in:cni,passport',
-            'fichier' => 'required|file|extensions:pdf,jpeg,png,jpg,doc,docx|max:5120',
+            'fichier' => 'required|file|mimes:pdf,jpeg,png,jpg|max:5120',
         ]);
 
         $document = $this->kycService->submitDocument($request->user(), $validated);
@@ -83,7 +83,7 @@ class KycController
             return response()->json(['message' => 'Réservé aux vendeurs.'], 403);
         }
 
-        $doc = $service->submitDocument($user, $request->validated());
+        $doc = $service->submit($user, $request->validated());
 
         return response()->json([
             'message' => 'Document KYC soumis. En attente de validation.',

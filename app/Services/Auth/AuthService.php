@@ -182,7 +182,7 @@ class AuthService
      * - supprime challenge
      * - délivre token
      */
-    public function issueTokenAfter2fa(string $userId, ?string $deviceName = null): array
+    public function issueTokenAfter2fa(int $userId, ?string $deviceName = null): array
     {
         $user = User::findOrFail($userId);
 
