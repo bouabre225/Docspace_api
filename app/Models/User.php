@@ -6,15 +6,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
+use App\Notifications\ResetPasswordNotification;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\Concerns\HasUuid;
 
-class User extends Authenticatable
+class User extends Authenticatable implements CanResetPasswordContract
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles, HasApiTokens, HasUuid;
+    use HasFactory, Notifiable, HasRoles, HasApiTokens, HasUuid, CanResetPassword;
 
     /**
      * The attributes that are mass assignable.
@@ -94,6 +97,16 @@ class User extends Authenticatable
     /**
      * 
      */
+    public function getAuthPassword(): string
+    {
+        return $this->mot_de_passe;
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
     public function has2faEnabled() 
     {
         return !empty($this->two_factor_secret);
