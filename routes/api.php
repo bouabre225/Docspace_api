@@ -83,7 +83,14 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 //Route /me
-Route::middleware('auth:sanctum')->get('/me', [MeController::class, '__invoke']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [MeController::class, '__invoke']);
+    Route::put('/me', [MeController::class, 'update']);
+    Route::post('/me/fcm-token', function (Request $request) {
+        $request->user()->update(['fcm_token' => $request->fcm_token]);
+        return response()->json(['status' => 200]);
+    });
+});
 
 // KYC vendeur (accessible même si verifie_kyc=false)
 Route::middleware(['auth:sanctum', 'role:vendeur'])->prefix('kyc')->group(function () {
@@ -116,12 +123,6 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
     // Supprimer une notif
     Route::delete('/{id}', [NotificationController::class, 'destroy']);
 });
-
-Route::middleware('auth:sanctum')->post('/me/fcm-token', function (Request $request) {
-    $request->user()->update(['fcm_token' => $request->fcm_token]);
-    return response()->json(['status' => 200]);
-});
-
 
 //Routes Litiges
 // Routes acheteur / vendeur
