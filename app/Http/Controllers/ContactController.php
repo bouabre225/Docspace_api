@@ -18,9 +18,15 @@ class ContactController extends Controller
             'message'   => 'required|string|max:1000',
         ]);
 
-        Mail::send('emails.contact', $validated, function ($mail) use ($validated) {
+        $sujet = '[DocSpace Contact] ' . ($validated['sujet'] ?? $validated['categorie'] ?? 'Nouveau message');
+
+        $data = $validated;
+        $data['contenu'] = $data['message'];  // renomme pour éviter le conflit avec $message de Laravel
+        unset($data['message']);
+
+        Mail::send('emails.contact', $data, function ($mail) use ($validated, $sujet) {
             $mail->to(config('mail.from.address'))
-                 ->subject('[DocSpace Contact] ' . ($validated['sujet'] ?: $validated['categorie'] ?: 'Nouveau message'))
+                 ->subject($sujet)
                  ->replyTo($validated['email'], $validated['nom']);
         });
 
