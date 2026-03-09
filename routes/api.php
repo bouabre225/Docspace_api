@@ -13,6 +13,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\MeController;
 use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\LitigeController;
+use App\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schedule;
@@ -23,6 +24,11 @@ Route::middleware('auth:sanctum')->prefix('kyc')->group(function () {
     Route::post('/documents', [KycController::class, 'store']);
     Route::delete('/documents/{id}', [KycController::class, 'destroy']);
 });
+
+
+//routes contact
+Route::post('/contact', [ContactController::class, 'store']);
+
 
 Route::middleware('auth:sanctum')->prefix('commandes')->group(function () {
     Route::get('/', [CommandeController::class, 'index']);
