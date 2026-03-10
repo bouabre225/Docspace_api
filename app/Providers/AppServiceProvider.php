@@ -27,10 +27,9 @@ class AppServiceProvider extends ServiceProvider
         // Limiter le login 
         RateLimiter::for('login', function (Request $request) {
             $email = (string) $request->input('email', '');
-            return [
-                Limit::perMinute(10)->by($request->ip()),
-                Limit::perMinute(5)->by(strtolower($email) . '|' . $request->ip())
-            ];
+
+            // ✅ Retourner un seul Limit — le plus restrictif suffit
+            return Limit::perMinute(5)->by(strtolower($email) . '|' . $request->ip());
         });
     }
 }
