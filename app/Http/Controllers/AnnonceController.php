@@ -9,13 +9,22 @@ use Illuminate\Support\Facades\Auth;
 class AnnonceController extends Controller
 {
     // Liste toutes les annonces actives
-    public function index()
+    public function index(Request $request)
     {
-        $annonces = Annonce::where('statut', 'active')
-            ->with('vendeur')
-            ->latest('created_at')
-            ->paginate(12);
-        
+        $query = Annonce::with(['images', 'vendeur']);
+
+        if ($request->boolean('my')) {
+            // Récupérer le user depuis le token manuellement
+            $user = auth('sanctum')->user();
+            if ($user) {
+                $query->where('vendeur_id', $user->id);
+            }
+        } else {
+            $query->where('statut', 'active');
+        }
+
+        $annonces = $query->latest('created_at')->paginate(12);
+
         return response()->json($annonces);
     }
 
