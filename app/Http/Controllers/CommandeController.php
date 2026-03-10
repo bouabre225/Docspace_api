@@ -127,4 +127,14 @@ class CommandeController extends Controller
             'data'    => $commandes,
         ]);
     }
+
+    public function recues(Request $request)
+    {
+        $commandes = Commande::with(['annonce', 'acheteur'])
+            ->where('vendeur_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return response()->json(['success' => true, 'data' => $commandes]);
+    }
 }
