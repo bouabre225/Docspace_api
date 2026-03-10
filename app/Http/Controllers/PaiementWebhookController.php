@@ -5,9 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Commande;
 use App\Services\paiementService;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 
-class PaiementWebhookController
+class PaiementWebhookController extends Controller
 {
     public function __construct(
         private paiementService $service
@@ -15,43 +16,36 @@ class PaiementWebhookController
 
     public function pay(Commande $commande)
     {
-        $this->authorize('view', $commande);
+        if ($commande->acheteur_id !== auth()->id()) {
+            return response()->json(['success' => false, 'message' => 'Non autorisé'], 403);
+        }
 
         if ($commande->statut !== 'en_attente') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cette commande ne peut pas être payée'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Cette commande ne peut pas être payée'], 400);
         }
 
         if ($commande->paiement) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Un paiement existe déjà pour cette commande'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Un paiement existe déjà'], 400);
         }
 
         try {
-            $payment = $this->service->createPayment($commande);
+            $result = $this->service->createPayment($commande);
 
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'payment_url' => $payment->provider_reference,
-                    'payment_id' => $payment->id,
-                    'montant' => $payment->montant,
-                    'statut' => $payment->statut,
-                ]
+                'data'    => [
+                    'token'          => $result['token'],           // ← token pour modal JS
+                    'transaction_id' => $result['transaction_id'],
+                    'montant'        => $result['montant'],
+                ],
             ], 201);
         } catch (\Exception $e) {
-            Log::error('Payment creation failed', [
-                'commande_id' => $commande->id,
-                'error' => $e->getMessage(),
-            ]);
-
+            // ← temporaire pour debug
             return response()->json([
                 'success' => false,
-                'message' => 'Échec de création du paiement'
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
             ], 500);
         }
     }
