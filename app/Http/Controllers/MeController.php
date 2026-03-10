@@ -58,4 +58,16 @@ class MeController
             'created_at'          => $user->created_at,
         ];
     }
+
+    public function adminUsers(Request $request)
+    {
+        $users = \App\Models\User::where('role', '!=', 'admin')
+            ->orderBy('created_at', 'desc')
+            ->paginate(30);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $users,
+        ]);
+    }
 }
