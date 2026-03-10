@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Providers;
 
 use App\Events\CommandeStatusChanged;
@@ -9,7 +8,6 @@ use App\Listeners\EnvoyerNotificationCommandeListener;
 use App\Listeners\EnvoyerNotificationLitigeListener;
 use App\Listeners\EnvoyerNotificationMessageListener;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
-
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -25,9 +23,12 @@ class EventServiceProvider extends ServiceProvider
         ],
     ];
 
-    /**
-     * Bootstrap services.
-     */
+    // ← Ajoute cette méthode pour désactiver l'auto-découverte
+    public function shouldDiscoverEvents(): bool
+    {
+        return false;
+    }
+
     public function boot(): void
     {
         //
