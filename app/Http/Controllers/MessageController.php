@@ -12,30 +12,27 @@ use Illuminate\Support\Facades\DB;
 class MessageController extends Controller
 {
     // Liste des conversations
-    public function index(): JsonResponse
+   public function index(): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = (string) Auth::id();
 
-        $conversations = Message::select(
-                'users.id',
-                'users.nom as name',
-                'users.email',
-                'users.avatar',
-                DB::raw('MAX(messages.created_at) as dernier_message'),
-                DB::raw("SUM(CASE WHEN messages.lu = false AND messages.recepteur_id = '{$userId}' THEN 1 ELSE 0 END) as non_lus")
-            )
-            ->join('users', function ($join) use ($userId) {
-                $join->on('users.id', '=', 'messages.expediteur_id')
-                     ->orOn('users.id', '=', 'messages.recepteur_id');
-            })
-            ->where(function ($query) use ($userId) {
-                $query->where('messages.expediteur_id', $userId)
-                      ->orWhere('messages.recepteur_id', $userId);
-            })
-            ->where('users.id', '!=', $userId)
-            ->groupBy('users.id', 'users.nom', 'users.email', 'users.avatar')
-            ->orderBy('dernier_message', 'desc')
-            ->get();
+     $conversations = DB::select("
+        SELECT
+            u.id::text,
+            u.nom as name,
+            u.email,
+            u.avatar,
+            MAX(COALESCE(m.created_at, '1970-01-01')) as dernier_message,
+            SUM(CASE WHEN m.lu = false AND m.recepteur_id::text = ? THEN 1 ELSE 0 END) as non_lus
+        FROM messages m
+        JOIN users u ON u.id::text = CASE
+            WHEN m.expediteur_id::text = ? THEN m.recepteur_id::text
+            ELSE m.expediteur_id::text
+        END
+        WHERE m.expediteur_id::text = ? OR m.recepteur_id::text = ?
+        GROUP BY u.id, u.nom, u.email, u.avatar
+        ORDER BY dernier_message DESC
+    ", [$userId, $userId, $userId, $userId]);
 
         return response()->json($conversations);
     }
@@ -43,7 +40,7 @@ class MessageController extends Controller
     // Conversation avec un utilisateur
     public function show(string $userId): JsonResponse
     {
-        $currentUserId = Auth::id();
+        $currentUserId = (string) Auth::id();
 
         $messages = Message::where(function ($query) use ($currentUserId, $userId) {
                 $query->where('expediteur_id', $currentUserId)
@@ -76,10 +73,11 @@ class MessageController extends Controller
         ]);
 
         $message = Message::create([
-            'expediteur_id' => Auth::id(),
-            'recepteur_id'  => $validated['recepteur_id'],
+            'expediteur_id' => (string) Auth::id(),
+            'recepteur_id'  => (string) $validated['recepteur_id'],
             'annonce_id'    => $validated['annonce_id'] ?? null,
             'contenu'       => $validated['contenu'],
+            'created_at'    => now(),
         ]);
 
         // Notifie le destinataire via push (temps réel)
