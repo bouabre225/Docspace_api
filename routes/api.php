@@ -15,6 +15,7 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\LitigeController;
 use App\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\admin\UserAdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schedule;
 
@@ -148,6 +149,15 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/litiges')->grou
 });
 
 Route::get('/admin/commandes', [CommandeController::class, 'adminIndex'])->middleware(['auth:sanctum', 'role:admin']);
+Route::get('/admin/users', [MeController::class, 'adminUsers'])->middleware(['auth:sanctum', 'role:admin']);
+
+//route de gestion des utilisateurs par l'admin
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/users')->group(function () {
+    Route::get('/',                    [UserAdminController::class, 'index']);
+    Route::patch('/{id}/suspend',      [UserAdminController::class, 'suspend']);
+    Route::patch('/{id}/reactivate',   [UserAdminController::class, 'reactivate']);
+    Route::delete('/{id}',             [UserAdminController::class, 'destroy']);
+});
 
 //route de notif
 // ─── Retry des notifications non envoyées ─────────────
