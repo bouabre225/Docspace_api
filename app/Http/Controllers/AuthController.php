@@ -134,19 +134,8 @@ class AuthController
                 $data['device_name'] ?? null
             );
 
-            //Cas 1: admin sans 2FA => token limité 2FA
-            if (($result['requires_2fa_setup'] ?? false) === true) {
-                return response()->json([
-                    'message' => $result['message'],
-                    'requires_2fa_setup' => true,
-                    'token' => $result['token'], // token limité uniquement 2FA
-                    'user' => $result['user'],
-                ], 200);
-            }
-
-            //Cas 2: admin avec 2FA => challenge obligatoire
             return response()->json([
-                'message' => '2FA requis (admin)',
+                'message'      => 'Code envoyé par mail',
                 'requires_2fa' => true,
                 'challenge_id' => $result['challenge_id'],
             ], 200);
