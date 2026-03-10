@@ -34,6 +34,7 @@ Route::post('/contact', [ContactController::class, 'store']);
 Route::middleware('auth:sanctum')->prefix('commandes')->group(function () {
     Route::get('/', [CommandeController::class, 'index']);
     Route::post('/', [CommandeController::class, 'store']);
+    Route::get('/recues', [CommandeController::class, 'recues']);
     Route::get('/{commande}', [CommandeController::class, 'show']);
     Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);
     Route::post('/{commande}/pay', [PaiementWebhookController::class, 'pay']);
