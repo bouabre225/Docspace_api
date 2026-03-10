@@ -137,21 +137,7 @@ class AuthService
             throw new \Exception('Accès réservé aux admins');
         }
 
-        if (!$user->has2faEnabled()) {
-            $bootstrapToken = $user->createToken(
-                $deviceName ?: 'admin_bootstrap',
-                ['2fa-bootstrap'] // ability UNIQUE
-            )->plainTextToken;
-
-            return [
-                'requires_2fa_setup' => true,
-                'message' => '2FA obligatoire pour les admins. Token bootstrap délivré uniquement pour activer 2FA.',
-                'token' => $bootstrapToken,
-                'user' => $user,
-            ];
-        }
-
-        //Si 2FA déjà activé: on force le flow normal (challenge)
+        // Peu importe si 2FA Google est activé ou non → toujours challenge par mail
         return $this->create2faChallenge($user, $deviceName, true);
     }
 
@@ -162,12 +148,15 @@ class AuthService
         Cache::put(
             "login_2fa_challenge:{$challengeId}",
             [
-                'user_id' => $user->id,
+                'user_id'     => $user->id,
                 'device_name' => $deviceName,
-                'is_admin' => $isAdmin,
+                'is_admin'    => $isAdmin,
             ],
             now()->addMinutes(10)
         );
+
+        // Envoie le code OTP par mail
+        app(\App\Services\Auth\TwoFactorService::class)->sendOtpEmail($user);
 
         return [
             'requires_2fa' => true,
