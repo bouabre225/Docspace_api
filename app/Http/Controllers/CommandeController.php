@@ -115,4 +115,16 @@ class CommandeController extends Controller
             'message' => 'Commande annulée avec succès'
         ]);
     }
+
+    public function adminIndex(Request $request)
+    {
+        $commandes = Commande::with(['annonce', 'acheteur', 'vendeur'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $commandes,
+        ]);
+    }
 }

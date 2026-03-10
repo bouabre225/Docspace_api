@@ -147,6 +147,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/litiges')->grou
     Route::post('/{litige}/resoudre', [LitigeController::class, 'resoudre']);
 });
 
+Route::get('/admin/commandes', [CommandeController::class, 'adminIndex'])->middleware(['auth:sanctum', 'role:admin']);
 
 //route de notif
 // ─── Retry des notifications non envoyées ─────────────
