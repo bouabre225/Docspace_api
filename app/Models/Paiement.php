@@ -11,6 +11,8 @@ class Paiement extends Model
     
     protected $table = 'paiements';
 
+    //public $timestamps = false;
+
     protected $fillable = [
         'commande_id',
         'montant',
@@ -25,10 +27,10 @@ class Paiement extends Model
         'date_paiement' => 'datetime',
     ];
 
-    public $timestamps = true;
+    //public $timestamps = true;
 
     public function commande()
     {
-        return $this->belongsTo(Commandes::class, 'commande_id');
+        return $this->belongsTo(Commande::class, 'commande_id');
     }
 }
