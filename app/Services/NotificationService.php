@@ -23,36 +23,34 @@ class NotificationService
         $referenceId   = $options['reference_id'] ?? null;
         $metadata      = $options['metadata'] ?? [];
 
-        foreach ($canaux as $canal) {
-            try {
-                // 1. Persistance immédiate → visible dans GET /notifications dès maintenant
-                $notification = Notification::create([
-                    'user_id'        => $user->id,
-                    'type'           => $type,
-                    'canal'          => $canal,
-                    'reference_type' => $referenceType,
-                    'reference_id'   => $referenceId,
-                    'contenu'        => $contenu,
-                    'metadata'       => $metadata,
-                    'lu'             => false,
-                    'sent_at'        => null, // mis à jour par le job après envoi réel
-                ]);
+        try {
+            // Une seule entrée en base — canal principal = push, sinon le premier
+            $canalPrincipal = in_array('push', $canaux) ? 'push' : $canaux[0];
 
-                // 2. Dispatch async → le worker gère l'envoi en arrière-plan
+            $notification = Notification::create([
+                'user_id'        => $user->id,
+                'type'           => $type,
+                'canal'          => $canalPrincipal,
+                'reference_type' => $referenceType,
+                'reference_id'   => $referenceId,
+                'contenu'        => $contenu,
+                'metadata'       => $metadata,
+                'lu'             => false,
+                'sent_at'        => null,
+            ]);
+
+            // Dispatch un job par canal — mais on ne crée pas d'entrée BDD par canal
+            foreach ($canaux as $canal) {
                 match ($canal) {
-                    'push'  => EnvoyerPushNotificationJob::dispatch($user, $notification)
-                                    ->onQueue('notifications'),
-                    'email' => EnvoyerEmailNotificationJob::dispatch($user, $notification)
-                                    ->onQueue('notifications'),
-                    'sms'   => EnvoyerSmsNotificationJob::dispatch($user, $notification)
-                                    ->onQueue('notifications'),
+                    'push'  => EnvoyerPushNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
+                    'email' => EnvoyerEmailNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
+                    'sms'   => EnvoyerSmsNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
                     default => Log::warning("[NotificationService] Canal inconnu: {$canal}"),
                 };
-
-            } catch (\Throwable $e) {
-                Log::error("[NotificationService] Erreur canal [{$canal}] user [{$user->id}]: " . $e->getMessage());
-                //dd($e->getMessage()); // ← ajoute ça temporairement
             }
+
+        } catch (\Throwable $e) {
+            Log::error("[NotificationService] Erreur user [{$user->id}]: " . $e->getMessage());
         }
     }
 
