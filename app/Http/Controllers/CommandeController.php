@@ -29,9 +29,12 @@ class CommandeController extends Controller
             $validated['annonce_id'],
             $validated['quantite']
         );
+        \Log::info('Commande créée', ['commande' => $commande]);
 
         // Notifie l'acheteur (confirmation de commande) et le vendeur (nouvelle commande)
         event(new CommandeStatusChanged($commande, null));
+
+        \Log::info('Commande créée', ['commande' => $commande]);
 
         return response()->json([
             'success' => true,
@@ -109,6 +112,8 @@ class CommandeController extends Controller
 
         $commande->update(['statut' => 'annulee']);
         $commande->annonce->increment('quantite', $commande->quantite);
+
+        event(new \App\Events\CommandeStatusChanged($commande, 'annulee'));
 
         return response()->json([
             'success' => true,
