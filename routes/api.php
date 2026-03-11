@@ -102,6 +102,25 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+Route::middleware(['auth:sanctum', 'role:admin'])->get('/admin/kyc/document/{id}', function ($id) {
+    \Log::info('KYC document request', ['id' => $id]);
+    
+    $doc = \App\Models\KycDocument::findOrFail($id);
+    \Log::info('Document found', ['fichier' => $doc->fichier]);
+    
+    $path = storage_path('app/private/' . $doc->fichier);
+    \Log::info('File path', ['path' => $path, 'exists' => file_exists($path)]);
+    
+    if (!file_exists($path)) {
+        abort(404, 'Document introuvable');
+    }
+    
+    return response()->file($path, [
+        'Content-Type' => mime_content_type($path),
+        'Content-Disposition' => 'inline',
+    ]);
+});
+
 // KYC vendeur (accessible même si verifie_kyc=false)
 Route::middleware(['auth:sanctum', 'role:vendeur'])->prefix('kyc')->group(function () {
     Route::post('/submit', [KycController::class, 'submit']);
@@ -160,6 +179,10 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/users')->group(
     Route::delete('/{id}',             [UserAdminController::class, 'destroy']);
 });
 
+Route::middleware('auth:sanctum')->post('/broadcasting/auth', function (Illuminate\Http\Request $request) {
+    return broadcast()->auth($request);
+});
+
 //route de notif
 // ─── Retry des notifications non envoyées ─────────────
 // Toutes les 10 minutes, retenté les notifs avec sent_at NULL depuis > 5 min
@@ -185,5 +208,3 @@ Schedule::call(function () {
 /*Route::middleware(['auth:sanctum', 'role:vendeur', 'kyc'])->group(function () {
     Route::post('/annonces', [AnnonceController::class, 'store']);
 });*/
-// Exemple routes protégées rôle (quand tu voudras)
-// Route::middleware(['auth:sanctum', 'role:admin'])->get('/admin/dashboard', fn() => 'Admin OK');
