@@ -4,18 +4,20 @@ namespace App\Listeners;
 
 use App\Events\LitigeOuvert;
 use App\Services\NotificationService;
-use Illuminate\Contracts\Queue\ShouldQueue;
+//use Illuminate\Contracts\Queue\ShouldQueue;
 
-class EnvoyerNotificationLitigeListener implements ShouldQueue
+class EnvoyerNotificationLitigeListener 
 {
-    public string $queue   = 'notifications';
-    public int    $tries   = 3;
-    public array  $backoff = [5, 15, 30];
+    //public string $queue   = 'notifications';
+    //public int    $tries   = 3;
+    //public array  $backoff = [5, 15, 30];
 
     public function __construct(protected NotificationService $notifService) {}
 
-    public function handle(LitigeOuvert $event): void
+    public function handle($event): void
     {
+        if (!$event instanceof LitigeOuvert) return;
+
         $litige = $event->litige;
         $this->notifService->notifierLitige(
             $litige->commande->vendeur,
