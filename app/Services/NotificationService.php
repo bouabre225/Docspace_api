@@ -18,6 +18,14 @@ class NotificationService
      */
     public function envoyer(User $user, string $type, string $contenu, array $options = []): void
     {
+        Log::info('NotificationService::envoyer appelé', [
+            'user_id' => $user->id,
+            'type'    => $type,
+            'contenu' => substr($contenu, 0, 50),
+            'trace'   => collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 6))
+                            ->pluck('function')->implode(' > '),
+        ]);
+        
         $canaux        = $options['canaux'] ?? ['push'];
         $referenceType = $options['reference_type'] ?? null;
         $referenceId   = $options['reference_id'] ?? null;
