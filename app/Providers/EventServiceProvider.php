@@ -29,6 +29,11 @@ class EventServiceProvider extends ServiceProvider
         return false;
     }
 
+    public function discoverEvents(): array
+    {
+        return [];
+    }
+
     public function boot(): void
     {
         //
