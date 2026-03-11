@@ -4,18 +4,16 @@ namespace App\Listeners;
 
 use App\Events\CommandeStatusChanged;
 use App\Services\NotificationService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
-class EnvoyerNotificationCommandeListener implements ShouldQueue
+class EnvoyerNotificationCommandeListener 
 {
-    public string $queue   = 'notifications';
-    public int    $tries   = 3;
-    public array  $backoff = [5, 15, 30];
-
     public function __construct(protected NotificationService $notifService) {}
 
-    public function handle(CommandeStatusChanged $event): void
+    // ← Pas de type hint sur $event pour éviter l'auto-découverte
+    public function handle($event): void
     {
+        if (!$event instanceof CommandeStatusChanged) return;
+
         $commande = $event->commande;
         $this->notifService->notifierStatutCommande($commande->acheteur, $commande);
 
