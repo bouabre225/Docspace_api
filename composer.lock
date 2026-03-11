@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7669e8c2d8c6dfb065a46da968ed72da",
+    "content-hash": "550b80020127e3b835f6035d7ffb8330",
     "packages": [
         {
             "name": "brick/math",
@@ -510,16 +510,16 @@
         },
         {
             "name": "fedapay/fedapay-php",
-            "version": "0.4.7",
+            "version": "dev-master",
             "source": {
                 "type": "git",
                 "url": "https://github.com/fedapay/fedapay-php.git",
-                "reference": "150c196ae7778b10ab04dc82cd882cf1a3c332ce"
+                "reference": "b3854444a2dda5f08a5769c07d4ecdba178c7fc2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/fedapay/fedapay-php/zipball/150c196ae7778b10ab04dc82cd882cf1a3c332ce",
-                "reference": "150c196ae7778b10ab04dc82cd882cf1a3c332ce",
+                "url": "https://api.github.com/repos/fedapay/fedapay-php/zipball/b3854444a2dda5f08a5769c07d4ecdba178c7fc2",
+                "reference": "b3854444a2dda5f08a5769c07d4ecdba178c7fc2",
                 "shasum": ""
             },
             "require": {
@@ -532,6 +532,7 @@
                 "phpunit/phpunit": "^4.0 || ^5.7 || ^9.0",
                 "squizlabs/php_codesniffer": "^3.0"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -557,9 +558,9 @@
             ],
             "support": {
                 "issues": "https://github.com/fedapay/fedapay-php/issues",
-                "source": "https://github.com/fedapay/fedapay-php/tree/0.4.7"
+                "source": "https://github.com/fedapay/fedapay-php/tree/master"
             },
-            "time": "2025-05-17T08:05:46+00:00"
+            "time": "2025-09-12T10:00:02+00:00"
         },
         {
             "name": "firebase/php-jwt",
@@ -9209,12 +9210,14 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "fedapay/fedapay-php": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.6.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }
