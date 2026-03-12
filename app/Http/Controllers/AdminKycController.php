@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;  // ← ajoute cet import
+use Illuminate\Http\JsonResponse;
 use App\Http\Requests\KycDecisionRequest;
-use App\Services\KycService;       // ← pas Auth\KycService
+use App\Services\KycService;
 use App\Services\NotificationService;
 use App\Models\KycDocument;
 
@@ -25,7 +25,7 @@ class AdminKycController
         return response()->json(['kyc_pending' => $docs], 200);
     }
 
-    public function decide(string $id, KycDecisionRequest $request, KycService $service): JsonResponse  // ← string
+    public function decide(string $id, KycDecisionRequest $request, KycService $service): JsonResponse
     {
         $doc = KycDocument::with('user')->find($id);
 
