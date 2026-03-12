@@ -22,7 +22,7 @@ class KycSubmitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type_document' => ['required', 'in:cni,passeport'],
+            'type_document' => ['required', 'in:cni,passeport,permis'],
             'fichier' => ['required', 'file', 'extensions:pdf,jpeg,png,jpg,doc,docx', 'max:5120'],
         ];
     }
