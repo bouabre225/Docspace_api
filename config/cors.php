@@ -28,13 +28,12 @@ return [
         'http://127.0.0.1:3000',
 
         // PROD (exemples)
-        // 'https://docspace.com',
-        // 'https://app.docspace.com',
+        'https://medi-kado.com',
     ],
 
     'allowed_origins_patterns' => [
         // Si tu veux accepter n'importe quel sous-domaine en prod:
-        // '/^https:\/\/(.+\.)?docspace\.com$/',
+        '/^https:\/\/(.+\.)?medi-kado\.com$/',
     ],
 
     'allowed_headers' => [
