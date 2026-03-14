@@ -13,10 +13,7 @@ return [
     */
 
     'paths' => [
-        'api/*',
-        'sanctum/csrf-cookie', // utile seulement si tu fais du SPA cookie-based
-        'login',
-        'logout',
+        'api/*'
     ],
 
     'allowed_methods' => ['*'],
