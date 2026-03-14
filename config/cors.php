@@ -22,28 +22,14 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:3000', // CRA
-        'http://localhost:5173', // Vite
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:3000',
-
         // PROD (exemples)
         'https://medi-kado.com',
+        'https://www.medi-kado.com',
     ],
 
-    'allowed_origins_patterns' => [
-        // Si tu veux accepter n'importe quel sous-domaine en prod:
-        '/^https:\/\/(.+\.)?medi-kado\.com$/',
-    ],
+    'allowed_origins_patterns' => [],
 
-    'allowed_headers' => [
-        'Accept',
-        'Authorization',
-        'Content-Type',
-        'Origin',
-        'X-Requested-With',
-        'X-CSRF-TOKEN',
-    ],
+    'allowed_headers' => ['*'],
 
     'exposed_headers' => [
         // optionnel
