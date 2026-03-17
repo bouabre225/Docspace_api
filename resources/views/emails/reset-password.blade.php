@@ -216,7 +216,7 @@
       <p>
         Marketplace d'équipements médicaux certifiés<br/>
         Cotonou, Bénin &nbsp;•&nbsp;
-        <a href="mailto:contact@docspace.com">contact@docspace.com</a>
+        <a href="mailto:docspaceafrica@gmail.com">docspaceafrica@gmail.com</a>
       </p>
       <p style="margin-top: 12px; font-size: 11px;">
         © {{ date('Y') }} DocSpace. Tous droits réservés.
