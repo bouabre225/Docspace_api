@@ -218,12 +218,12 @@ class AuthController
         $request->validate([
             'token'                 => 'required',
             'email'                 => 'required|email',
-            'password'              => 'required|min:8|confirmed',
+            'mot_de_passe'              => 'required|min:8|confirmed',
             'password_confirmation' => 'required',
         ]);
 
         $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            $request->only('email', 'mot_de_passe', 'password_confirmation', 'token'),
             function (User $user, string $password) {
                 $user->forceFill([
                     'mot_de_passe' => Hash::make($password),
