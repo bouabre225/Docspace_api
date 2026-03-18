@@ -23,6 +23,7 @@ class EnvoyerEmailNotificationJob implements ShouldQueue
     public function __construct(
         public readonly User         $user,
         public readonly Notification $notification,
+        public readonly ?string      $commentaire = null
     ) {}
 
     public function handle(): void
@@ -36,6 +37,7 @@ class EnvoyerEmailNotificationJob implements ShouldQueue
                 'reference'    => $this->notification->reference_type,
                 'reference_id' => $this->notification->reference_id,
                 'metadata'     => $this->notification->metadata,
+                //'commentaire'  => $this->commentaire,
             ],
             function ($message) {
                 $message->to($this->user->email, $this->user->nom ?? $this->user->email)
