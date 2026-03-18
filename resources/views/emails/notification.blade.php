@@ -20,7 +20,7 @@
         <h1>DocSpace</h1>
     </div>
     <div class="body">
-        <p>Bonjour {{ $user->name ?? $user->email }},</p>
+        <p>Bonjour {{ $user->nom ?? $user->email }},</p>
         <p>{{ $contenu }}</p>
 
         @if($commentaire)
