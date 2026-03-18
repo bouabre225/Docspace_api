@@ -23,6 +23,10 @@
         <p>Bonjour {{ $user->name ?? $user->email }},</p>
         <p>{{ $contenu }}</p>
 
+        @if($commentaire)
+            <p>{{ $commentaire }}</p>
+        @endif
+        
         @if($reference && $reference_id)
         <a class="cta" href="{{ config('app.frontend_url') }}/{{ $reference }}/{{ $reference_id }}">
             Voir les détails
