@@ -131,6 +131,7 @@ class NotificationService
             'canaux'         => ['push', 'email'],
             'reference_type' => 'kyc',
             'metadata'       => ['statut' => $statut],
+            'commentaire'   =>  [$commentaire],
         ]);
     }
 
