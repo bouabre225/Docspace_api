@@ -30,6 +30,7 @@ class NotificationService
         $referenceType = $options['reference_type'] ?? null;
         $referenceId   = $options['reference_id'] ?? null;
         $metadata      = $options['metadata'] ?? [];
+        $commentaire   = $options['commentaire'] ?? null;
 
         try {
             // Une seule entrée en base — canal principal = push, sinon le premier
@@ -50,7 +51,7 @@ class NotificationService
             // Dispatch un job par canal — mais on ne crée pas d'entrée BDD par canal
             foreach ($canaux as $canal) {
                 match ($canal) {
-                    'push'  => EnvoyerPushNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
+                    'push'  => EnvoyerPushNotificationJob::dispatch($user, $notification, $commentaire)->onQueue('notifications'),
                     'email' => EnvoyerEmailNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
                     'sms'   => EnvoyerSmsNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
                     default => Log::warning("[NotificationService] Canal inconnu: {$canal}"),
@@ -131,7 +132,7 @@ class NotificationService
             'canaux'         => ['push', 'email'],
             'reference_type' => 'kyc',
             'metadata'       => ['statut' => $statut],
-            'commentaire'   =>  [$commentaire],
+            'commentaire'   =>  $commentaire,
         ]);
     }
 
