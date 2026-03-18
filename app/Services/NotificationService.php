@@ -52,7 +52,7 @@ class NotificationService
             foreach ($canaux as $canal) {
                 match ($canal) {
                     'push'  => EnvoyerPushNotificationJob::dispatch($user, $notification, $commentaire)->onQueue('notifications'),
-                    'email' => EnvoyerEmailNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
+                    'email' => EnvoyerEmailNotificationJob::dispatch($user, $notification, $commentaire)->onQueue('notifications'),
                     'sms'   => EnvoyerSmsNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
                     default => Log::warning("[NotificationService] Canal inconnu: {$canal}"),
                 };
