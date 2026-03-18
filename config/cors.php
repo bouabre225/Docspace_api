@@ -20,8 +20,8 @@ return [
 
     'allowed_origins' => [
         // PROD (exemples)
-        'https://medi-kado.com',
-        'https://www.medi-kado.com',
+        'https://docspace.bj',
+        'https://www.docspace.bj',
     ],
 
     'allowed_origins_patterns' => [],
