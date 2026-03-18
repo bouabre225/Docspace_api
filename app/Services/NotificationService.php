@@ -50,13 +50,16 @@ class NotificationService
 
             // Dispatch un job par canal — mais on ne crée pas d'entrée BDD par canal
             foreach ($canaux as $canal) {
-                match ($canal) {
-                    'push'  => EnvoyerPushNotificationJob::dispatch($user, $notification, $commentaire)->onQueue('notifications'),
-                    'email' => EnvoyerEmailNotificationJob::dispatch($user, $notification, $commentaire)->onQueue('notifications'),
+                $job = match ($canal) {
+                    'push'  => EnvoyerPushNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
+                    'email' => EnvoyerEmailNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
                     'sms'   => EnvoyerSmsNotificationJob::dispatch($user, $notification)->onQueue('notifications'),
                     default => Log::warning("[NotificationService] Canal inconnu: {$canal}"),
                 };
-            }
+                if ($job) {
+                   dispatch($job->onQueue('notifications'))->afterCommit();
+                }
+            }   
 
         } catch (\Throwable $e) {
             Log::error("[NotificationService] Erreur user [{$user->id}]: " . $e->getMessage());
@@ -132,7 +135,7 @@ class NotificationService
             'canaux'         => ['push', 'email'],
             'reference_type' => 'kyc',
             'metadata'       => ['statut' => $statut],
-            'commentaire'   =>  $commentaire,
+            'commentaire'    => $commentaire,
         ]);
     }
 
