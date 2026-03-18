@@ -137,7 +137,7 @@ class AuthService
             throw new \Exception('Accès réservé aux admins');
         }
 
-        // Peu importe si 2FA Google est activé ou non → toujours challenge par mail
+        // Cette ligne est cruciale : elle génère le challenge_id et envoie le mail
         return $this->create2faChallenge($user, $deviceName, true);
     }
 
