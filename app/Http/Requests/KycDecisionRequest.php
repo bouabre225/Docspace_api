@@ -23,6 +23,7 @@ class KycDecisionRequest extends FormRequest
     {
         return [
             'decision' => ['required', 'in:valide,refuse'],
+            'commentaire' => ['nullable', 'string', 'max:500'],
         ];
     }
 }
