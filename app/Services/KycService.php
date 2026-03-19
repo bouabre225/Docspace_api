@@ -33,7 +33,7 @@ class KycService
             throw new \InvalidArgumentException('Décision invalide');
         }
 
-        return DB::transaction(function () use ($document, $admin, $decision, $commentaire, $ip_address) {
+        return DB::transaction(function () use ($document, $admin, $decision, $ip_address) {
             $ancienStatut = $document->statut;
             
             $document->update([
