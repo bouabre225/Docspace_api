@@ -27,7 +27,6 @@ class KycService
         KycDocument $document,
         User $admin,
         string $decision,
-        ?string $commentaire,
         string $ip_address
     ) {
         if (!in_array($decision, ['valide', 'refuse'])) {
@@ -52,7 +51,7 @@ class KycService
                 'document_id' => $document->id,
                 'ancien_statut' => $ancienStatut,
                 'nouveau_statut' => $decision,
-                'commentaire' => $commentaire,
+                'commentaire' => null,
                 'ip_address' => $ip_address,
             ]);
 

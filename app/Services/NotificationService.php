@@ -132,7 +132,7 @@ class NotificationService
     {
         $contenu = $statut === 'valide'
             ? "Votre vérification d'identité a été approuvée. Vous pouvez maintenant publier des annonces."
-            : "Votre vérification d'identité a été refusée." . ($commentaire ? " Raison : {$commentaire}" : '');
+            : "Votre vérification d'identité a été refusée.";
 
         $this->envoyer($vendeur, 'systeme', $contenu, [
             'canaux'         => ['push', 'email'],
