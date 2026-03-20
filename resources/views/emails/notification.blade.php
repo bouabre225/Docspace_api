@@ -23,7 +23,7 @@
         <p>Bonjour {{ $user->nom ?? $user->email }},</p>
         <p>{{ $contenu }}</p>
 
-        @if($commentaire)
+        @if(!empty($commentaire ?? null))
             <p>{{ $commentaire }}</p>
         @endif
         
