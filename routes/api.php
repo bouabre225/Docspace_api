@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnnonceController;
+use App\Http\Controllers\AnnonceImageController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\commandeController;
 use App\Http\Controllers\KycController;
@@ -36,6 +37,7 @@ Route::get('/annonces/{annonce}', [AnnonceController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/annonces', [AnnonceController::class, 'store']);
+    Route::post('/annonces/{annonce}/images', [AnnonceImageController::class, 'store']);
     Route::put('/annonces/{annonce}', [AnnonceController::class, 'update']);
     Route::delete('/annonces/{annonce}', [AnnonceController::class, 'destroy']);
     Route::get('/messages', [MessageController::class, 'index']);

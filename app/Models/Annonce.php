@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\HasUuid;
 
 class Annonce extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuid;
 
-    public $timestamps = false;
+    public $timestamps = true;
     const CREATED_AT = 'created_at';
 
     protected $fillable = [

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class commandeService
 {
-    public function createOrder($user, int $annonce_id, int $quantite)
+    public function createOrder($user, string $annonce_id, int $quantite)
     {
         return DB::transaction(function () use ($user, $annonce_id, $quantite) {
             $annonce = Annonce::lockForUpdate()->findOrFail($annonce_id);
