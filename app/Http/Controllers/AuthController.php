@@ -226,7 +226,7 @@ class AuthController
             $request->only('email', 'mot_de_passe', 'password_confirmation', 'token'),
             function (User $user, string $password) {
                 $user->forceFill([
-                    'mot_de_passe' => Hash::make($password),
+                    'mot_de_passe' => $password,
                     'remember_token' => Str::random(60),
                 ])->save();
 

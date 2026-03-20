@@ -102,6 +102,11 @@ class User extends Authenticatable implements CanResetPasswordContract
         return $this->mot_de_passe;
     }
 
+    public function getAuthPasswordName(): string
+    {
+        return 'mot_de_passe';
+    }
+
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token));
