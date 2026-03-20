@@ -218,7 +218,7 @@ class AuthController
         $request->validate([
             'token'                 => 'required',
             'email'                 => 'required|email',
-            'mot_de_passe'              => 'required|min:8|confirmed',
+            'mot_de_passe'              => 'required|min:8|same:password_confirmation',
             'password_confirmation' => 'required',
         ]);
 
