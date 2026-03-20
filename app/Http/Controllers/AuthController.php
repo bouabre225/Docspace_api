@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class AuthController
 {
@@ -218,33 +219,41 @@ class AuthController
         $request->validate([
             'token'                 => 'required',
             'email'                 => 'required|email',
-            'mot_de_passe'              => 'required|min:8|same:password_confirmation',
+            'mot_de_passe'          => 'required|min:8|same:password_confirmation',
             'password_confirmation' => 'required',
         ]);
 
-        $status = Password::reset(
-            $request->only('email', 'mot_de_passe', 'password_confirmation', 'token'),
-            function (User $user, string $password) {
-                $user->forceFill([
-                    'mot_de_passe' => $password,
-                    'remember_token' => Str::random(60),
-                ])->save();
+        // Vérifie le token manuellement
+        $record = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->first();
 
-                event(new PasswordReset($user));
-            }
-        );
-
-        if ($status === Password::PASSWORD_RESET) {
-            return response()->json(['message' => 'Mot de passe réinitialisé avec succès.']);
+        if (!$record) {
+            return response()->json(['message' => 'Token invalide ou expiré.'], 422);
         }
 
-        return response()->json([
-            'message' => match($status) {
-                Password::INVALID_TOKEN => 'Token invalide ou expiré.',
-                Password::INVALID_USER  => 'Aucun compte associé à cet email.',
-                default                 => 'Erreur lors de la réinitialisation.',
-            }
-        ], 422);
+        if (!Hash::check($request->token, $record->token)) {
+            return response()->json(['message' => 'Token invalide ou expiré.'], 422);
+        }
+
+        if (now()->diffInMinutes($record->created_at) > 60) {
+            return response()->json(['message' => 'Token expiré.'], 422);
+        }
+
+        // Met à jour le mot de passe
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Aucun compte associé à cet email.'], 422);
+        }
+
+        $user->mot_de_passe = $request->mot_de_passe;
+        $user->save();
+
+        // Supprime le token
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return response()->json(['message' => 'Mot de passe réinitialisé avec succès.']);
     }
     /**
      * Logout
