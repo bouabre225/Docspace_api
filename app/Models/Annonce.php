@@ -13,7 +13,7 @@ class Annonce extends Model
     protected $keyType = 'int';
     public $incrementing = true;
 
-    public $timestamps = false;
+    public $timestamps = true;
     const CREATED_AT = 'created_at';
 
     protected $fillable = [

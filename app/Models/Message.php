@@ -10,7 +10,7 @@ class Message extends Model
 {
     use HasFactory, HasUuid;
 
-    public $timestamps = false;
+    public $timestamps = true;
     const CREATED_AT = 'created_at';
 
     protected $fillable = [
