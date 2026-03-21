@@ -91,9 +91,16 @@ class paiementService
                         'statut' => 'payee',
                     ]);
 
-                    Log::info('Payment approved', [
+                    // Charger les relations pour la facture
+                    $commande->load(['acheteur', 'vendeur', 'annonce']);
+
+                    // Envoyer la facture à l'acheteur
+                    Mail::to($commande->acheteur->email)
+                        ->queue(new FactureMail($commande));
+
+                    Log::info('Payment approved + facture envoyée', [
                         'transaction_id' => $transactionId,
-                        'commande_id' => $commande->id,
+                        'commande_id'    => $commande->id,
                     ]);
                     break;
 
