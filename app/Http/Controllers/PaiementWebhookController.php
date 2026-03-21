@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Commande;
-use App\Models\Paiement;
 use App\Services\paiementService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -17,22 +16,26 @@ class PaiementWebhookController extends Controller
 
     public function pay(Commande $commande)
     {
-        // Remplace la vérification existante par :
-        $paiementExistant = Paiement::where('commande_id', $commande->id)->first();
-        if ($paiementExistant && !in_array($paiementExistant->statut, ['en_attente', 'echoue'])) {
-            return response()->json(['success' => false, 'message' => 'Un paiement existe déjà pour cette commande.'], 400);
-        }
-        if ($paiementExistant) {
-            $paiementExistant->delete();
-        }
-
-
         if ($commande->acheteur_id !== auth()->id()) {
             return response()->json(['success' => false, 'message' => 'Non autorisé'], 403);
         }
 
         if ($commande->statut !== 'en_attente') {
             return response()->json(['success' => false, 'message' => 'Cette commande ne peut pas être payée'], 400);
+        }
+
+        // Si un paiement en_attente existe depuis + d'1 min, le supprimer pour permettre un nouveau
+        if ($commande->paiement && $commande->paiement->statut === 'en_attente') {
+            if ($commande->paiement->created_at->diffInMinutes(now()) >= 1) {
+                $commande->paiement->delete();
+                $commande->unsetRelation('paiement');
+            } else {
+                return response()->json(['success' => false, 'message' => 'Un paiement est déjà en cours'], 400);
+            }
+        }
+
+        if ($commande->paiement && !in_array($commande->paiement->statut, ['en_attente'])) {
+            return response()->json(['success' => false, 'message' => 'Un paiement existe déjà'], 400);
         }
 
         try {
