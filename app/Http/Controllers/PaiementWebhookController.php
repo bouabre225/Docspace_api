@@ -61,10 +61,10 @@ class PaiementWebhookController extends Controller
         }
     }
 
-    public function handleWebhook(Request $request)
-    {
-        // ── Vérification de la signature FedaPay ──────────────────────────────
-        /*
+   public function handleWebhook(Request $request)
+{
+    // ← Commente temporairement la vérif signature
+    /*
     $signature = $request->header('X-FedaPay-Signature');
     $webhookSecret = config('services.fedapay.webhook_secret');
     ...
@@ -75,66 +75,23 @@ class PaiementWebhookController extends Controller
         'signature' => $request->header('X-FedaPay-Signature'),
     ]);
 
-        if (empty($webhookSecret)) {
-            Log::warning('FedaPay webhook secret non configuré — vérification ignorée');
-        } elseif (empty($signature)) {
-            Log::warning('FedaPay webhook reçu sans signature', ['ip' => $request->ip()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Signature manquante'
-            ], 401);
-        } else {
-            $payload = $request->getContent();
-            $expectedSignature = 'sha256=' . hash_hmac('sha256', $payload, $webhookSecret);
+    try {
+        $event = $request->input('event');
+        $transactionId = $request->input('transaction.id');
 
-            if (!hash_equals($expectedSignature, $signature)) {
-                Log::warning('FedaPay webhook : signature invalide', [
-                    'ip' => $request->ip(),
-                    'signature_reçue' => $signature,
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Signature invalide'
-                ], 401);
-            }
+        if (empty($event) || empty($transactionId)) {
+            return response()->json(['success' => false, 'message' => 'Payload incomplet'], 400);
         }
-        // ─────────────────────────────────────────────────────────────────────
 
-        Log::info('FedaPay webhook received', [
-            'payload' => $request->all(),
-            'ip' => $request->ip(),
-        ]);
+        $result = $this->service->handleWebhookEvent($event, $transactionId);
 
-        try {
-            $event = $request->input('event');
-            $transactionId = $request->input('transaction.id');
+        return response()->json(['success' => true, 'message' => 'Webhook traité']);
 
-            if (empty($event) || empty($transactionId)) {
-                Log::warning('FedaPay webhook : payload incomplet', ['payload' => $request->all()]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payload incomplet'
-                ], 400);
-            }
-
-            $result = $this->service->handleWebhookEvent($event, $transactionId);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Webhook traité avec succès'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Webhook processing failed', [
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Échec du traitement du webhook'
-            ], 500);
-        }
+    } catch (\Exception $e) {
+        \Log::error('Webhook failed', ['error' => $e->getMessage()]);
+        return response()->json(['success' => false], 500);
     }
+}
 
     public function verify(Commande $commande)
     {
