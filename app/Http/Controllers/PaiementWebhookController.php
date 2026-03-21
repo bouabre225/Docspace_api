@@ -66,6 +66,12 @@ class PaiementWebhookController extends Controller
         $signature = $request->header('X-FedaPay-Signature');
         $webhookSecret = config('services.fedapay.webhook_secret');
 
+        \Log::info('Webhook headers', [
+            'signature' => $request->header('X-FedaPay-Signature'),
+            'all_headers' => $request->headers->all(),
+        ]);
+        \Log::info('Webhook payload', ['body' => $request->getContent()]);
+
         if (empty($webhookSecret)) {
             Log::warning('FedaPay webhook secret non configuré — vérification ignorée');
         } elseif (empty($signature)) {
