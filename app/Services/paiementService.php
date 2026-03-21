@@ -6,107 +6,73 @@ use App\Models\Commande;
 use App\Models\Paiement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use FedaPay\FedaPay;
+use FedaPay\Transaction;
 
 class paiementService
 {
+    public function __construct()
+    {
+        FedaPay::setApiKey(config('services.fedapay.secret'));
+        FedaPay::setEnvironment(config('services.fedapay.environment'));
+    }
+
+    /**
+     * Nettoie un numéro de téléphone pour FedaPay : garde les 8 derniers chiffres (format Bénin)
+     */
+    private function cleanPhone(?string $phone): string
+    {
+        $digits = preg_replace('/\D/', '', $phone ?? '');
+        return strlen($digits) >= 8 ? substr($digits, -8) : '00000000';
+    }
+
     public function createPayment(Commande $commande): array
     {
         return DB::transaction(function () use ($commande) {
+            $customerData = [
+                'firstname' => $commande->acheteur->nom,
+                'lastname'  => '',
+                'email'     => $commande->acheteur->email,
+            ];
 
-            if ((int) $commande->montant < 100) {
-                throw new \Exception('Le montant minimum pour le paiement est 100 XOF.');
+            $phone = $this->cleanPhone($commande->acheteur->telephone);
+            if ($phone !== '00000000') {
+                $customerData['phone_number'] = [
+                    'number'  => $phone,
+                    'country' => 'bj',
+                ];
             }
 
-            $client = new \GuzzleHttp\Client();
-
-            // ── Créer la transaction ──────────────────────────────────────
-            $response = $client->post('https://api.fedapay.com/v1/transactions', [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . config('services.fedapay.secret'),
-                    'Content-Type'  => 'application/json',
-                ],
-                'json' => [
-                    'description'  => 'Commande #' . substr($commande->id, 0, 8) . ' - DocSpace',
-                    'amount'       => (int) $commande->montant,
-                    'currency'     => ['iso' => 'XOF'],
-                    'callback_url' => route('fedapay.webhook'),
-                    'customer'     => [
-                        'firstname' => $commande->acheteur->nom ?? 'Client',
-                        'lastname'  => ' ',
-                        'email'     => $commande->acheteur->email,
-                        'phone_number' => [
-                            'number'  => $commande->acheteur->telephone ?? '97000000',
-                            'country' => 'BJ',
-                        ],
-                    ],
-                ],
-                'http_errors' => false,
+            // Créer la transaction FedaPay
+            $transaction = Transaction::create([
+                'description' => "Commande #{$commande->id} — DocSpace",
+                'amount'      => (int) $commande->montant,
+                'currency'    => ['iso' => 'XOF'],
+                'callback_url'=> config('app.frontend_url', config('app.url')) . '/commandes/' . $commande->id,
+                'customer'    => $customerData,
             ]);
 
-            $body   = json_decode($response->getBody(), true);
-            $status = $response->getStatusCode();
+            // Générer le token — c'est lui qu'on passe au modal JS FedaPay
+            $token = $transaction->generateToken();
 
-            Log::info('FedaPay create transaction', ['status' => $status, 'body' => $body]);
-
-            if ($status >= 400 || $body === null) {
-                throw new \Exception('FedaPay indisponible (status ' . $status . ')');
-            }
-
-            $transactionData = $body['v1/transaction'] ?? $body['transaction'] ?? null;
-
-            if (!$transactionData || empty($transactionData['id'])) {
-                throw new \Exception('FedaPay: transaction ID manquant. Réponse: ' . json_encode($body));
-            }
-
-            $transactionId = $transactionData['id'];
-
-            // ── Récupérer le token ────────────────────────────────────────
-            $token = $transactionData['payment_token'] ?? null;
-
-            if (!$token) {
-                $tokenResponse = $client->post("https://api.fedapay.com/v1/transactions/{$transactionId}/token", [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . config('services.fedapay.secret'),
-                        'Content-Type'  => 'application/json',
-                    ],
-                    'http_errors' => false,
-                ]);
-
-                $tokenBody   = json_decode($tokenResponse->getBody(), true);
-                $tokenStatus = $tokenResponse->getStatusCode();
-
-                Log::info('FedaPay token fallback', ['status' => $tokenStatus, 'body' => $tokenBody]);
-
-                if ($tokenStatus >= 400) {
-                    throw new \Exception('FedaPay token error: ' . json_encode($tokenBody));
-                }
-
-                $token = $tokenBody['token'] ?? null;
-            }
-
-            if (!$token) {
-                throw new \Exception('FedaPay: token manquant.');
-            }
-
-            // ── Sauvegarder le paiement ───────────────────────────────────
+            // Sauvegarder le paiement en base
             Paiement::create([
                 'commande_id'        => $commande->id,
                 'moyen'              => 'fedapay',
                 'montant'            => $commande->montant,
                 'statut'             => 'en_attente',
-                'provider_reference' => (string) $transactionId,
+                'provider_reference' => $transaction->id,
             ]);
 
             return [
-                'token'          => $token,
-                'payment_url'    => $transactionData['payment_url'] ?? "https://process.fedapay.com/{$token}",
-                'transaction_id' => $transactionId,
+                'token'          => $token->token,   // ← pour le modal JS
+                'transaction_id' => $transaction->id,
                 'montant'        => $commande->montant,
             ];
         });
     }
 
-    public function handleWebhookEvent(string $event, string $transactionId): Paiement
+    public function handleWebhookEvent(string $event, string $transactionId)
     {
         return DB::transaction(function () use ($event, $transactionId) {
             $paiement = Paiement::where('provider_reference', 'LIKE', "%{$transactionId}%")
@@ -117,13 +83,17 @@ class paiementService
             switch ($event) {
                 case 'transaction.approved':
                     $paiement->update([
-                        'statut'        => 'bloque',
+                        'statut' => 'bloque',
                         'date_paiement' => now(),
                     ]);
-                    $commande->update(['statut' => 'payee']);
+
+                    $commande->update([
+                        'statut' => 'payee',
+                    ]);
+
                     Log::info('Payment approved', [
                         'transaction_id' => $transactionId,
-                        'commande_id'    => $commande->id,
+                        'commande_id' => $commande->id,
                     ]);
                     break;
 
@@ -131,17 +101,19 @@ class paiementService
                     $paiement->update(['statut' => 'annule']);
                     $commande->update(['statut' => 'annulee']);
                     $commande->annonce->increment('quantite', $commande->quantite);
+
                     Log::warning('Payment canceled', [
                         'transaction_id' => $transactionId,
-                        'commande_id'    => $commande->id,
+                        'commande_id' => $commande->id,
                     ]);
                     break;
 
                 case 'transaction.failed':
                     $paiement->update(['statut' => 'echoue']);
+
                     Log::error('Payment failed', [
                         'transaction_id' => $transactionId,
-                        'commande_id'    => $commande->id,
+                        'commande_id' => $commande->id,
                     ]);
                     break;
 
@@ -151,5 +123,10 @@ class paiementService
 
             return $paiement;
         });
+    }
+
+    private function generateFedaPayUrl(Commande $commande): string
+    {
+        return config('services.fedapay.base_url') . '/pay?amount=' . $commande->montant . '&order_id=' . $commande->id;
     }
 }
