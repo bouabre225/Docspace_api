@@ -126,4 +126,34 @@ class PaiementWebhookController extends Controller
             ], 500);
         }
     }
+
+    public function verify(Commande $commande)
+    {
+        if ($commande->acheteur_id !== auth()->id()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        if (!$commande->paiement) {
+            return response()->json(['statut' => $commande->statut]);
+        }
+
+        try {
+            // Vérifier directement chez FedaPay
+            $transaction = Transaction::retrieve($commande->paiement->provider_reference);
+            
+            if ($transaction->status === 'approved') {
+                $commande->paiement->update([
+                    'statut'        => 'bloque',
+                    'date_paiement' => now(),
+                ]);
+                $commande->update(['statut' => 'payee']);
+                $commande->load(['acheteur', 'vendeur', 'annonce']);
+                \Mail::to($commande->acheteur->email)->queue(new \App\Mail\FactureMail($commande));
+            }
+
+            return response()->json(['statut' => $commande->fresh()->statut]);
+        } catch (\Exception $e) {
+            return response()->json(['statut' => $commande->statut]);
+        }
+    }
 }
