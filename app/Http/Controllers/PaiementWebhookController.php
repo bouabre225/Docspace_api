@@ -6,6 +6,7 @@ use App\Models\Commande;
 use App\Services\paiementService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use FedaPay\Transaction;
 use Illuminate\Support\Facades\Log;
 
 class PaiementWebhookController extends Controller
@@ -63,14 +64,16 @@ class PaiementWebhookController extends Controller
     public function handleWebhook(Request $request)
     {
         // ── Vérification de la signature FedaPay ──────────────────────────────
-        $signature = $request->header('X-FedaPay-Signature');
-        $webhookSecret = config('services.fedapay.webhook_secret');
+        /*
+    $signature = $request->header('X-FedaPay-Signature');
+    $webhookSecret = config('services.fedapay.webhook_secret');
+    ...
+    */
 
-        \Log::info('Webhook headers', [
-            'signature' => $request->header('X-FedaPay-Signature'),
-            'all_headers' => $request->headers->all(),
-        ]);
-        \Log::info('Webhook payload', ['body' => $request->getContent()]);
+    \Log::info('FedaPay webhook received', [
+        'payload' => $request->all(),
+        'signature' => $request->header('X-FedaPay-Signature'),
+    ]);
 
         if (empty($webhookSecret)) {
             Log::warning('FedaPay webhook secret non configuré — vérification ignorée');
