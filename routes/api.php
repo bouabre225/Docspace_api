@@ -39,7 +39,7 @@ Route::middleware('auth:sanctum')->prefix('commandes')->group(function () {
     Route::get('/{commande}', [CommandeController::class, 'show']);
     Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);
     Route::post('/{commande}/pay', [PaiementWebhookController::class, 'pay']);
-    Route::get('/{commande}/verify', [PaiementWebhookController::class, 'verify']);
+    Route::post('/{commande}/verify', [PaiementWebhookController::class, 'verify']);
 });
 
 Route::post('/webhooks/fedapay', [PaiementWebhookController::class, 'handleWebhook'])
