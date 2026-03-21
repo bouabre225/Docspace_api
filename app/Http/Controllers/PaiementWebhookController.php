@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use FedaPay\Transaction;
 use Illuminate\Support\Facades\Log;
+use App\Mail\FactureMail;
+use Illuminate\Support\Facades\Mail;
 
 class PaiementWebhookController extends Controller
 {
@@ -81,6 +83,38 @@ class PaiementWebhookController extends Controller
         } catch (\Exception $e) {
             Log::error('Webhook failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false], 500);
+        }
+    }
+
+    public function verify(Commande $commande)
+    {
+        if ($commande->acheteur_id !== auth()->id()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        if (!$commande->paiement) {
+            return response()->json(['statut' => $commande->statut]);
+        }
+
+        try {
+            $transaction = Transaction::retrieve($commande->paiement->provider_reference);
+
+            if ($transaction->status === 'approved') {
+                $commande->paiement->update([
+                    'statut'        => 'bloque',
+                    'date_paiement' => now(),
+                ]);
+                $commande->update(['statut' => 'payee']);
+                $commande->load(['acheteur', 'vendeur', 'annonce']);
+                \Mail::to($commande->acheteur->email)
+                    ->queue(new \App\Mail\FactureMail($commande));
+            }
+
+            return response()->json(['statut' => $commande->fresh()->statut]);
+
+        } catch (\Exception $e) {
+            \Log::error('Verify payment error', ['error' => $e->getMessage()]);
+            return response()->json(['statut' => $commande->statut]);
         }
     }
 }
