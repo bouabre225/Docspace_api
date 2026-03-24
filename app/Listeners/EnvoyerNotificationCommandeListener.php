@@ -38,5 +38,12 @@ class EnvoyerNotificationCommandeListener
                 ]
             );
         }
+
+        if ($commande->statut === 'livree') {
+            $this->notifService->envoyer($commande->vendeur, 'commande',
+                "📦 La commande #{$commande->id} a été confirmée livrée par l'admin.",
+                ['canaux' => ['push', 'email'], 'reference_type' => 'commande', 'reference_id' => $commande->id]
+            );
+        }
     }
 }

@@ -142,4 +142,31 @@ class CommandeController extends Controller
 
         return response()->json(['success' => true, 'data' => $commandes]);
     }
+
+    public function marquerLivree(Request $request, Commande $commande): JsonResponse
+    {
+        // Seul admin peut appeler cette route
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Non autorisé'], 403);
+        }
+
+        if ($commande->statut !== 'payee') {
+            return response()->json([
+                'success' => false,
+                'message' => "Impossible : la commande doit être payée (statut actuel : {$commande->statut})"
+            ], 400);
+        }
+
+        $commande->update(['statut' => 'livree']);
+        $commande->load(['acheteur', 'vendeur', 'annonce']);
+
+        // ✅ Notifie acheteur + vendeur
+        event(new CommandeStatusChanged($commande, 'payee'));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Commande marquée comme livrée',
+            'data'    => $commande,
+        ]);
+    }
 }

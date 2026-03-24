@@ -27,7 +27,6 @@ Route::middleware('auth:sanctum')->prefix('kyc')->group(function () {
     Route::delete('/documents/{id}', [KycController::class, 'destroy']);
 });
 
-
 //routes contact
 Route::post('/contact', [ContactController::class, 'store']);
 
@@ -171,6 +170,9 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/litiges')->grou
     Route::patch('/{litige}/prendre-en-charge', [LitigeController::class, 'prendreEnCharge']);
     Route::post('/{litige}/resoudre', [LitigeController::class, 'resoudre']);
 });
+
+Route::patch('/admin/commandes/{commande}/livrer', [CommandeController::class, 'marquerLivree'])
+    ->middleware(['auth:sanctum', 'role:admin']);
 
 Route::get('/admin/commandes', [CommandeController::class, 'adminIndex'])->middleware(['auth:sanctum', 'role:admin']);
 Route::get('/admin/users', [MeController::class, 'adminUsers'])->middleware(['auth:sanctum', 'role:admin']);
