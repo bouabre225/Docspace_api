@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use FedaPay\FedaPay;
 use FedaPay\Transaction;
+use App\Events\CommandeStatusChanged;
+use App\Mail\FactureMail;
+use Illuminate\Support\Facades\Mail;
+
 
 class paiementService
 {
@@ -93,6 +97,8 @@ class paiementService
 
                     // Charger les relations pour la facture
                     $commande->load(['acheteur', 'vendeur', 'annonce']);
+
+                    event(new CommandeStatusChanged($commande, 'payee'));
 
                     // Envoyer la facture à l'acheteur
                     Mail::to($commande->acheteur->email)
