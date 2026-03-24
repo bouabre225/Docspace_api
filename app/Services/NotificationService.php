@@ -75,6 +75,7 @@ class NotificationService
     {
         $messages = [
             'en_attente' => "Votre commande #{$commande->id} a été créée et est en attente de paiement.",
+            'payee'      => "Votre paiement pour la commande #{$commande->id} a été confirmé !",
             'expediee'   => "Votre commande #{$commande->id} a été expédiée par le vendeur.",
             'livree'     => "Votre commande #{$commande->id} a été marquée comme livrée.",
             'cloturee'   => "Votre commande #{$commande->id} est clôturée. Merci pour votre achat !",

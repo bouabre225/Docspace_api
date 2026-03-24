@@ -10,6 +10,7 @@ use FedaPay\Transaction;
 use Illuminate\Support\Facades\Log;
 use App\Mail\FactureMail;
 use Illuminate\Support\Facades\Mail;
+use App\Events\CommandeStatusChanged;
 
 class PaiementWebhookController extends Controller
 {
@@ -106,6 +107,9 @@ class PaiementWebhookController extends Controller
                 ]);
                 $commande->update(['statut' => 'payee']);
                 $commande->load(['acheteur', 'vendeur', 'annonce']);
+
+                event(new CommandeStatusChanged($commande, 'payee'));
+
                 \Mail::to($commande->acheteur->email)
                     ->queue(new \App\Mail\FactureMail($commande));
             }
