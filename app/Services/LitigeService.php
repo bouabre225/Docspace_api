@@ -19,7 +19,7 @@ class LitigeService
                 'acheteur_id'     => $acheteurId,
                 'motif'           => $motif,
                 'preuves'         => $preuves,
-                'statut'          => 'ouvert',
+                'statut'          => 'en_attente',
                 'date_signalement'=> now(),
             ]);
 

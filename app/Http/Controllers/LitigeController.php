@@ -163,7 +163,7 @@ class LitigeController extends Controller
      */
     public function prendreEnCharge(Litige $litige): JsonResponse
     {
-        if ($litige->statut !== 'ouvert') {
+        if (!in_array($litige->statut, ['ouvert', 'en_attente'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Ce litige n\'est pas dans un état ouvert.',
