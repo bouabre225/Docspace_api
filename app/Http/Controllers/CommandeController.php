@@ -24,6 +24,16 @@ class CommandeController extends Controller
             'quantite'   => 'required|integer|min:1',
         ]);
 
+        $annonce = \App\Models\Annonce::findOrFail($validated['annonce_id']);
+
+        // ✅ Empêche un vendeur de commander son propre article
+        if ($annonce->vendeur_id === $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous ne pouvez pas commander votre propre annonce.',
+            ], 403);
+        }
+
         $commande = $this->commandeService->createOrder(
             $request->user(),
             $validated['annonce_id'],
