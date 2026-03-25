@@ -11,7 +11,7 @@ class LitigeService
     /**
      * Ouvre un litige sur une commande livrée.
      */
-    public function ouvrir(Commande $commande, int $acheteurId, string $motif, ?string $preuves): Litige
+    public function ouvrir(Commande $commande, sting $acheteurId, string $motif, ?string $preuves): Litige
     {
         return DB::transaction(function () use ($commande, $acheteurId, $motif, $preuves) {
             $litige = Litige::create([
