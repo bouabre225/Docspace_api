@@ -82,7 +82,7 @@ class LitigeController extends Controller
     {
         $validated = $request->validate([
             'commande_id' => 'required|exists:commandes,id',
-            'motif'       => 'required|in:non_conforme,defectueux,perdu',
+            'motif'       => 'required|string',
             'preuves'     => 'nullable|string|max:2000',
         ]);
 
