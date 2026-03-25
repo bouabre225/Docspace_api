@@ -9,7 +9,7 @@ class Litige extends Model
 {
     use HasUuid;
 
-    public $timestamps = false;        // ← la table n'a pas updated_at
+    public $timestamps = true;        // ← la table n'a pas updated_at
     const CREATED_AT = 'date_signalement'; // ← created_at s'appelle date_signalement
 
     protected $fillable = [
@@ -18,7 +18,7 @@ class Litige extends Model
         'motif',
         'preuves',
         'statut',
-        'date_signalement', // ← ajoute
+        'date_signalement', 
     ];
 
     public function commande()
