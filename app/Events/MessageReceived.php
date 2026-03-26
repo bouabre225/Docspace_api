@@ -13,6 +13,8 @@ class MessageReceived implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public bool $broadcastImmediately = true;
+
     public function __construct(public readonly Message $message)
     {
         Log::info('[BROADCAST] Message event created', [
