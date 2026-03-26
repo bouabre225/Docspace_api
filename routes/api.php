@@ -136,7 +136,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/kyc')->group(fu
     Route::get('/pending', [AdminKycController::class, 'pending']);
     Route::post('/{id}/decide', [AdminKycController::class, 'decide']);
     Route::post('/documents/{document}/validate', [adminController::class, 'validateKyc']);
-
+    Route::delete('/admin/annonces/{annonce}', [AnnonceController::class, 'adminDestroy']);
 });
 
 //routes notification 
