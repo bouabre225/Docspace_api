@@ -21,9 +21,32 @@ class AnnonceController extends Controller
             }
         } else {
             $query->where('statut', 'active');
+
+            // Filtre catégorie
+            if ($request->filled('categorie')) {
+                $query->where('categorie', $request->categorie);
+            }
+
+            // Filtre état
+            if ($request->filled('etat')) {
+                $query->where('etat', $request->etat);
+            }
+
+            // Tri
+            if ($request->sort === 'prix_asc') {
+                $query->orderBy('prix_vendeur', 'asc');
+            } elseif ($request->sort === 'prix_desc') {
+                $query->orderBy('prix_vendeur', 'desc');
+            } else {
+                $query->latest('created_at');
+            }
+        }
+        // Si pas de tri spécifié (mode 'my' aussi)
+        if (!$request->filled('sort') || $request->boolean('my')) {
+            $query->latest('created_at');
         }
 
-        $annonces = $query->latest('created_at')->paginate(12);
+        $annonces = $query->paginate($request->per_page ?? 12);
 
         return response()->json($annonces);
     }
@@ -111,18 +134,33 @@ class AnnonceController extends Controller
     // Recherche
     public function search(Request $request)
     {
-        $query = $request->input('q');
-        
-        $annonces = Annonce::where('statut', 'active')
-            ->where(function($q) use ($query) {
-                $q->where('titre', 'ILIKE', "%{$query}%")
-                  ->orWhere('description', 'ILIKE', "%{$query}%")
-                  ->orWhere('categorie', 'ILIKE', "%{$query}%");
-            })
-            ->with('vendeur', 'images')
-            ->latest('created_at')
-            ->paginate(12);
+        $q = $request->input('q');
 
-        return response()->json($annonces);
+        $query = Annonce::where('statut', 'active')
+            ->where(function($query) use ($q) {
+                $query->where('titre', 'ILIKE', "%{$q}%")
+                    ->orWhere('description', 'ILIKE', "%{$q}%")
+                    ->orWhere('categorie', 'ILIKE', "%{$q}%");
+            })
+            ->with('vendeur', 'images');
+
+        // Filtres additionnels
+        if ($request->filled('categorie')) {
+            $query->where('categorie', $request->categorie);
+        }
+
+        if ($request->filled('etat')) {
+            $query->where('etat', $request->etat);
+        }
+
+        if ($request->sort === 'prix_asc') {
+            $query->orderBy('prix_vendeur', 'asc');
+        } elseif ($request->sort === 'prix_desc') {
+            $query->orderBy('prix_vendeur', 'desc');
+        } else {
+            $query->latest('created_at');
+        }
+
+        return response()->json($query->paginate(12));
     }
 }
