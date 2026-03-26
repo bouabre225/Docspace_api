@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
@@ -66,11 +67,15 @@ class MessageController extends Controller
     // Envoyer un message
     public function store(Request $request): JsonResponse
     {
+        Log::info('[MESSAGE] Receiving message request', ['user_id' => Auth::id()]);
+        
         $validated = $request->validate([
             'recepteur_id' => 'required|exists:users,id',
             'annonce_id'   => 'nullable|exists:annonces,id',
             'contenu'      => 'required|string|max:1000',
         ]);
+
+        Log::info('[MESSAGE] Validation passed', $validated);
 
         $message = Message::create([
             'expediteur_id' => (string) Auth::id(),
@@ -80,7 +85,13 @@ class MessageController extends Controller
             'created_at'    => now(),
         ]);
 
+        Log::info('[MESSAGE] Message created', [
+            'message_id' => $message->id,
+            'recepteur_id' => $message->recepteur_id,
+        ]);
+
         // Notifie le destinataire via push (temps réel)
+        Log::info('[MESSAGE] Dispatching MessageReceived event');
         event(new MessageReceived($message->load('recepteur')));
 
         return response()->json([
