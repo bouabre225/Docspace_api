@@ -174,4 +174,20 @@ class AnnonceController extends Controller
 
         return response()->json($counts);
     }
+
+    public function adminDestroy(Annonce $annonce): JsonResponse
+    {
+        // Supprime les images associées
+        foreach ($annonce->images as $img) {
+            \Storage::delete('public/' . $img->image_url);
+            $img->delete();
+        }
+
+        $annonce->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Annonce supprimée par l\'admin',
+        ]);
+    }
 }
