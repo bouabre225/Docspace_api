@@ -16,6 +16,7 @@ use App\Http\Controllers\TwoFactorController;
 use App\Http\Controllers\LitigeController;
 use App\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\admin\UserAdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schedule;
@@ -46,7 +47,6 @@ Route::post('/webhooks/fedapay', [PaiementWebhookController::class, 'handleWebho
 
 Route::get('/annonces', [AnnonceController::class, 'index']);
 Route::get('/annonces/search', [AnnonceController::class, 'search']);
-Route::get('/annonces/counts-categorie', [AnnonceController::class, 'countsParCategorie']);
 Route::get('/annonces/{annonce}', [AnnonceController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -187,7 +187,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/users')->group(
 });
 
 Route::middleware('auth:sanctum')->post('/broadcasting/auth', function (Illuminate\Http\Request $request) {
-    return broadcast()->auth($request);
+    return Broadcast::auth($request);
 });
 
 //route de notif
