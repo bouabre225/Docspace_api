@@ -163,4 +163,14 @@ class AnnonceController extends Controller
 
         return response()->json($query->paginate(12));
     }
+
+    public function countsParCategorie(): JsonResponse
+    {
+        $counts = Annonce::where('statut', 'active')
+            ->selectRaw('categorie, COUNT(*) as total')
+            ->groupBy('categorie')
+            ->pluck('total', 'categorie');
+
+        return response()->json($counts);
+    }
 }
