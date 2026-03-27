@@ -117,7 +117,7 @@ class PaiementWebhookController extends Controller
             return response()->json(['statut' => $commande->fresh()->statut]);
 
         } catch (\Exception $e) {
-            \Log::error('Verify payment error', ['error' => $e->getMessage()]);
+            //\Log::error('Verify payment error', ['error' => $e->getMessage()]);
             return response()->json(['statut' => $commande->statut]);
         }
     }
