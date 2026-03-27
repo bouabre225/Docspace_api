@@ -1,0 +1,55 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: "/tmp/api_ci"
+          # Exclure les fichiers sensibles/inutiles
+          exclude: ".git,vendor,node_modules,.env,storage/logs,storage/framework/cache,storage/framework/sessions,storage/framework/views"
+
+      - name: Install dependencies and finalize
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Copier les nouveaux fichiers (sans écraser .env et storage)
+            sudo rsync -a --exclude='.env' --exclude='storage/' \
+              /tmp/api_ci/ /var/www/medi-kado/Docspace_api/
+
+            sudo chown -R www-data:www-data /var/www/medi-kado/Docspace_api/
+            sudo chmod -R 775 /var/www/medi-kado/Docspace_api/storage/ \
+                              /var/www/medi-kado/Docspace_api/bootstrap/cache/
+
+            cd /var/www/medi-kado/Docspace_api
+
+            # Installer les dépendances
+            sudo -u www-data composer install --no-dev --optimize-autoloader --no-interaction
+
+            # Migrations et cache
+            sudo -u www-data php artisan migrate --force
+            sudo -u www-data php artisan optimize
+
+            # Restart queue workers
+            sudo -u www-data php artisan queue:restart
+
+            rm -rf /tmp/api_ci
+            echo "Backend deployed successfully"
