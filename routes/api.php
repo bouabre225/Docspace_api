@@ -24,6 +24,7 @@ Route::prefix('annonces')->group(function () {
     Route::get('/', [AnnonceController::class, 'index']);
     Route::get('/search', [AnnonceController::class, 'search']);
     Route::get('/{annonce}', [AnnonceController::class, 'show']);
+    Route::get('/counts-categorie', [AnnonceController::class, 'countsParCategorie']);
 });
 
 // Authentification & Inscription
