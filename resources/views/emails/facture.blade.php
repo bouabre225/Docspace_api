@@ -166,18 +166,40 @@
 
             <div class="totaux-box">
                 @php $protection = $commande->montant - $sousTotal; @endphp
-                <div class="total-row">
-                    <span style="color:#6b7280;">Sous-total HT</span>
-                    <span style="font-weight:600;">{{ number_format($sousTotal, 0, ',', ' ') }} FCFA</span>
-                </div>
-                <div class="total-row">
-                    <span style="color:#09B1BA; font-weight:600;">🛡️ Protection acheteur (+8%)</span>
-                    <span style="color:#09B1BA; font-weight:600;">+ {{ number_format($protection, 0, ',', ' ') }} FCFA</span>
-                </div>
-                <div class="total-final">
-                    <span class="total-final-label">Total payé</span>
-                    <span class="total-final-price">{{ number_format($commande->montant, 0, ',', ' ') }} FCFA</span>
-                </div>
+                
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <!-- Sous-total -->
+                    <tr>
+                        <td style="padding: 8px 0; font-size: 14px; color: #6b7280;">Sous-total HT</td>
+                        <td style="padding: 8px 0; font-size: 14px; font-weight: 600; text-align: right; color: #374151;">
+                            {{ number_format($sousTotal, 0, ',', ' ') }} FCFA
+                        </td>
+                    </tr>
+                    <!-- Protection -->
+                    <tr>
+                        <td style="padding: 8px 0; font-size: 14px; color: #09B1BA; font-weight: 600;">
+                            🛡️ Protection acheteur (+8%)
+                        </td>
+                        <td style="padding: 8px 0; font-size: 14px; color: #09B1BA; font-weight: 600; text-align: right;">
+                            + {{ number_format($protection, 0, ',', ' ') }} FCFA
+                        </td>
+                    </tr>
+                    <!-- Séparateur -->
+                    <tr>
+                        <td colspan="2" style="padding: 0;">
+                            <div style="border-top: 2px solid #e5e7eb; margin: 10px 0;"></div>
+                        </td>
+                    </tr>
+                    <!-- Total payé -->
+                    <tr>
+                        <td style="padding: 10px 0 4px; font-size: 18px; font-weight: 800; color: #111827;">
+                            Total payé
+                        </td>
+                        <td style="padding: 10px 0 4px; font-size: 24px; font-weight: 800; color: #1DBF73; text-align: right;">
+                            {{ number_format($commande->montant, 0, ',', ' ') }} FCFA
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             <div class="cta-container">
