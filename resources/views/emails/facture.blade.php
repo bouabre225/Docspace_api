@@ -220,6 +220,12 @@
             <a href="mailto:docspaceafrica@gmail.com">docspaceafrica@gmail.com</a>
         </p>
 
+        <hr class="divider">
+
+        <p class="message-bottom">
+            Après réception, vous avez sous réserve de 48h pour vérifier l'état de l'équipement et ouvrir un litige si nécessaire.
+        </p>
+
     </div>
 
     {{-- Footer --}}

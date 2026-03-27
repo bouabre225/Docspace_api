@@ -1,81 +1,42 @@
 <?php
 
-use App\Http\Controllers\AnnonceController;
-use App\Http\Controllers\AnnonceImageController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\MessageController;
-use App\Http\Controllers\CommandeController;
-use App\Http\Controllers\KycController;
-use App\Http\Controllers\PaiementWebhookController;
-use App\Http\Controllers\admin\adminController;
-use App\Http\Controllers\AdminKycController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\GoogleAuthController;
-use App\Http\Controllers\MeController;
-use App\Http\Controllers\TwoFactorController;
-use App\Http\Controllers\LitigeController;
-use App\Http\Controllers\ContactController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\admin\UserAdminController;
+use Illuminate\Support\Facades\{Route, Broadcast, Schedule};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schedule;
+use App\Http\Controllers\{
+    AnnonceController, AnnonceImageController, NotificationController,
+    MessageController, CommandeController, KycController,
+    PaiementWebhookController, AuthController, GoogleAuthController,
+    MeController, TwoFactorController, LitigeController, ContactController,
+    AdminKycController
+};
+use App\Http\Controllers\admin\{adminController, UserAdminController};
 
-
-Route::middleware('auth:sanctum')->prefix('kyc')->group(function () {
-    Route::get('/documents', [KycController::class, 'index']);
-    Route::post('/documents', [KycController::class, 'store']);
-    Route::delete('/documents/{id}', [KycController::class, 'destroy']);
-});
-
-//routes contact
+/*
+|--------------------------------------------------------------------------
+| 1. ROUTES PUBLIQUES (Ouvertes à tous)
+|--------------------------------------------------------------------------
+*/
+Route::get('/', fn() => response()->json(['status' => 200, 'message' => 'API Docspace is running']));
 Route::post('/contact', [ContactController::class, 'store']);
 
-
-Route::middleware('auth:sanctum')->prefix('commandes')->group(function () {
-    Route::get('/', [CommandeController::class, 'index']);
-    Route::post('/', [CommandeController::class, 'store']);
-    Route::get('/recues', [CommandeController::class, 'recues']);
-    Route::get('/{commande}', [CommandeController::class, 'show']);
-    Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);
-    Route::post('/{commande}/pay', [PaiementWebhookController::class, 'pay']);
-    Route::post('/{commande}/verify', [PaiementWebhookController::class, 'verify']);
+// Annonces (Consultation)
+Route::prefix('annonces')->group(function () {
+    Route::get('/', [AnnonceController::class, 'index']);
+    Route::get('/search', [AnnonceController::class, 'search']);
+    Route::get('/counts-categorie', [AnnonceController::class, 'countsParCategorie']);
+    Route::get('/{annonce}', [AnnonceController::class, 'show']);
 });
 
-Route::post('/webhooks/fedapay', [PaiementWebhookController::class, 'handleWebhook'])
-    ->name('fedapay.webhook');
-
-Route::get('/annonces', [AnnonceController::class, 'index']);
-Route::get('/annonces/search', [AnnonceController::class, 'search']);
-Route::get('/annonces/{annonce}', [AnnonceController::class, 'show']);
-
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/annonces', [AnnonceController::class, 'store']);
-    Route::put('/annonces/{annonce}', [AnnonceController::class, 'update']);
-    Route::delete('/annonces/{annonce}', [AnnonceController::class, 'destroy']);
-    Route::post('/annonces/{annonce}/images', [AnnonceImageController::class, 'store']);
-    Route::delete('/annonces/images/{image}', [AnnonceImageController::class, 'destroy']);
-    Route::get('/messages', [MessageController::class, 'index']);
-    Route::post('/messages', [MessageController::class, 'store']);
-    Route::get('/messages/{userId}', [MessageController::class, 'show']);
-});
-
-Route::get('/', function () {
-    return response()->json(['status'=> 200, 'message' => 'API is running']);
-});
-
-// Auth
+// Authentification & Inscription
 Route::middleware('throttle:login')->group(function () {
     Route::post('/register/acheteur', [AuthController::class, 'registerBuyer']);
     Route::post('/register/vendeur', [AuthController::class, 'registerSeller']);
-
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
-
-    // finalisation si 2FA requis (user ou admin)
     Route::post('/login/2fa', [AuthController::class, 'login2fa']);
 });
 
-//mot de passe oublié
+// Récupération de compte
 Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
 Route::post('/password/reset',  [AuthController::class, 'resetPassword']);
 
@@ -83,134 +44,136 @@ Route::post('/password/reset',  [AuthController::class, 'resetPassword']);
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect']);
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 
-// 2FA (activation/désactivation) -> protégé
-Route::middleware('auth:sanctum')->prefix('2fa')->group(function () {
-    Route::post('/enable', [TwoFactorController::class, 'enable']);
-    Route::post('/verify', [TwoFactorController::class, 'verify']);   // confirmation activation
-    Route::post('/disable', [TwoFactorController::class, 'disable']);
-});
+// Webhooks (Paiements)
+Route::post('/webhooks/fedapay', [PaiementWebhookController::class, 'handleWebhook'])->name('fedapay.webhook');
 
-// Logout protégé
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-});
 
-//Route /me
+/*
+|--------------------------------------------------------------------------
+| 2. ROUTES PROTÉGÉES (Utilisateurs connectés)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/me', [MeController::class, '__invoke']);
-    Route::put('/me', [MeController::class, 'update']);
-    Route::post('/me/fcm-token', function (Request $request) {
-        $request->user()->update(['fcm_token' => $request->fcm_token]);
-        return response()->json(['status' => 200]);
+
+    // --- MON PROFIL & SÉCURITÉ ---
+    Route::prefix('me')->group(function () {
+        Route::get('/', [MeController::class, '__invoke']);
+        Route::put('/', [MeController::class, 'update']);
+        Route::post('/fcm-token', fn(Request $r) => $r->user()->update(['fcm_token' => $r->fcm_token]));
     });
-});
-
-Route::middleware(['auth:sanctum', 'role:admin'])->get('/admin/kyc/document/{id}', function ($id) {
-    \Log::info('KYC document request', ['id' => $id]);
     
-    $doc = \App\Models\KycDocument::findOrFail($id);
-    \Log::info('Document found', ['fichier' => $doc->fichier]);
-    
-    $path = storage_path('app/private/' . $doc->fichier);
-    \Log::info('File path', ['path' => $path, 'exists' => file_exists($path)]);
-    
-    if (!file_exists($path)) {
-        abort(404, 'Document introuvable');
-    }
-    
-    return response()->file($path, [
-        'Content-Type' => mime_content_type($path),
-        'Content-Disposition' => 'inline',
-    ]);
+    Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::prefix('2fa')->group(function () {
+        Route::post('/enable', [TwoFactorController::class, 'enable']);
+        Route::post('/verify', [TwoFactorController::class, 'verify']);
+        Route::post('/disable', [TwoFactorController::class, 'disable']);
+    });
+
+    // --- MESSAGERIE & NOTIFICATIONS ---
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/compteur', [NotificationController::class, 'compteur']);
+        Route::patch('/{id}/lire', [NotificationController::class, 'marquerLue']);
+        Route::patch('/lire-tout', [NotificationController::class, 'marquerToutesLues']);
+        Route::delete('/{id}', [NotificationController::class, 'destroy']);
+    });
+
+    Route::prefix('messages')->group(function () {
+        Route::get('/', [MessageController::class, 'index']);
+        Route::post('/', [MessageController::class, 'store']);
+        Route::get('/{userId}', [MessageController::class, 'show']);
+    });
+
+    // --- COMMANDES & LITIGES (Commun Acheteur/Vendeur) ---
+    Route::prefix('commandes')->group(function () {
+        Route::get('/', [CommandeController::class, 'index']);
+        Route::post('/', [CommandeController::class, 'store']);
+        Route::get('/recues', [CommandeController::class, 'recues']);
+        Route::get('/{commande}', [CommandeController::class, 'show']);
+        Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);
+        Route::post('/{commande}/pay', [PaiementWebhookController::class, 'pay']);
+        Route::post('/{commande}/verify', [PaiementWebhookController::class, 'verify']);
+    });
+
+    Route::prefix('litiges')->group(function () {
+        Route::get('/', [LitigeController::class, 'index']);
+        Route::get('/{litige}', [LitigeController::class, 'show']);
+        Route::post('/', [LitigeController::class, 'store']);
+    });
+
+    /* --- ESPACE VENDEUR --- */
+    Route::middleware('role:vendeur')->group(function () {
+        Route::prefix('annonces')->group(function () {
+            Route::post('/', [AnnonceController::class, 'store']);
+            Route::put('/{annonce}', [AnnonceController::class, 'update']);
+            Route::delete('/{annonce}', [AnnonceController::class, 'destroy']);
+            Route::post('/{annonce}/images', [AnnonceImageController::class, 'store']);
+        });
+        Route::delete('/annonces/images/{image}', [AnnonceImageController::class, 'destroy']);
+
+        Route::prefix('kyc')->group(function () {
+            Route::post('/submit', [KycController::class, 'submit']);
+            Route::get('/status', [KycController::class, 'status']);
+        });
+    });
+
+    /* --- ESPACE ADMINISTRATEUR --- */
+    Route::middleware('role:admin')->prefix('admin')->group(function () {
+        
+        // Utilisateurs
+        Route::prefix('users')->group(function () {
+            Route::get('/', [UserAdminController::class, 'index']);
+            Route::get('/list-simple', [MeController::class, 'adminUsers']);
+            Route::patch('/{id}/suspend', [UserAdminController::class, 'suspend']);
+            Route::patch('/{id}/reactivate', [UserAdminController::class, 'reactivate']);
+            Route::delete('/{id}', [UserAdminController::class, 'destroy']);
+        });
+
+        // KYC
+        Route::prefix('kyc')->group(function () {
+            Route::get('/pending', [AdminKycController::class, 'pending']);
+            Route::post('/{id}/decide', [AdminKycController::class, 'decide']);
+            Route::post('/documents/{document}/validate', [adminController::class, 'validateKyc']);
+            Route::get('/document/{id}', function ($id) {
+                $doc = \App\Models\KycDocument::findOrFail($id);
+                return response()->file(storage_path('app/private/'.$doc->fichier));
+            });
+        });
+
+        // Commandes, Litiges & Annonces
+        Route::get('/commandes', [CommandeController::class, 'adminIndex']);
+        Route::patch('/commandes/{commande}/livrer', [CommandeController::class, 'marquerLivree']);
+        Route::delete('/annonces/{annonce}', [AnnonceController::class, 'adminDestroy']);
+        
+        Route::prefix('litiges')->group(function () {
+            Route::get('/', [LitigeController::class, 'adminIndex']);
+            Route::patch('/{litige}/prendre-en-charge', [LitigeController::class, 'prendreEnCharge']);
+            Route::post('/{litige}/resoudre', [LitigeController::class, 'resoudre']);
+        });
+    });
+
+    Route::post('/broadcasting/auth', fn(Request $r) => Broadcast::auth($r));
 });
 
-// KYC vendeur (accessible même si verifie_kyc=false)
-Route::middleware(['auth:sanctum', 'role:vendeur'])->prefix('kyc')->group(function () {
-    Route::post('/submit', [KycController::class, 'submit']);
-    Route::get('/status', [KycController::class, 'status']);
-});
-
-// KYC admin
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/kyc')->group(function () {
-    Route::get('/pending', [AdminKycController::class, 'pending']);
-    Route::post('/{id}/decide', [AdminKycController::class, 'decide']);
-    Route::post('/documents/{document}/validate', [adminController::class, 'validateKyc']);
-
-});
-
-//routes notification 
-Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
-    // Liste des notifications (avec filtres ?lu=false&type=commande)
-    Route::get('/', [NotificationController::class, 'index']);
-
-    // Badge : nombre de notifs non lues
-    Route::get('/compteur', [NotificationController::class, 'compteur']);
-
-    // Marquer une notif comme lue
-    Route::patch('/{id}/lire', [NotificationController::class, 'marquerLue']);
-
-    // Marquer toutes les notifs comme lues
-    Route::patch('/lire-tout', [NotificationController::class, 'marquerToutesLues']);
-
-    // Supprimer une notif
-    Route::delete('/{id}', [NotificationController::class, 'destroy']);
-});
-
-//Routes Litiges
-// Routes acheteur / vendeur
-Route::middleware('auth:sanctum')->prefix('litiges')->group(function () {
-    Route::get('/', [LitigeController::class, 'index']);
-    Route::get('/{litige}', [LitigeController::class, 'show']);
-    Route::post('/', [LitigeController::class, 'store']);
-});
-
-// Routes admin
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/litiges')->group(function () {
-    Route::get('/', [LitigeController::class, 'adminIndex']);
-    Route::patch('/{litige}/prendre-en-charge', [LitigeController::class, 'prendreEnCharge']);
-    Route::post('/{litige}/resoudre', [LitigeController::class, 'resoudre']);
-});
-
-Route::patch('/admin/commandes/{commande}/livrer', [CommandeController::class, 'marquerLivree'])
-    ->middleware(['auth:sanctum', 'role:admin']);
-
-Route::get('/admin/commandes', [CommandeController::class, 'adminIndex'])->middleware(['auth:sanctum', 'role:admin']);
-Route::get('/admin/users', [MeController::class, 'adminUsers'])->middleware(['auth:sanctum', 'role:admin']);
-
-//route de gestion des utilisateurs par l'admin
-Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin/users')->group(function () {
-    Route::get('/',                    [UserAdminController::class, 'index']);
-    Route::patch('/{id}/suspend',      [UserAdminController::class, 'suspend']);
-    Route::patch('/{id}/reactivate',   [UserAdminController::class, 'reactivate']);
-    Route::delete('/{id}',             [UserAdminController::class, 'destroy']);
-});
-
-Route::middleware('auth:sanctum')->post('/broadcasting/auth', function (Illuminate\Http\Request $request) {
-    return broadcast()->auth($request);
-});
-
-//route de notif
-// ─── Retry des notifications non envoyées ─────────────
-// Toutes les 10 minutes, retenté les notifs avec sent_at NULL depuis > 5 min
+/*
+|--------------------------------------------------------------------------
+| 3. TÂCHES PLANIFIÉES (CRON JOBS)
+|--------------------------------------------------------------------------
+*/
+// Retry des notifications échouées
 Schedule::command('notifications:retry-failed')
     ->everyTenMinutes()
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/scheduler.log'));
 
-// ─── Nettoyage des failed_jobs > 30 jours ─────────────
-Schedule::command('queue:flush')
-    ->monthly();
+// Nettoyage des jobs en échec (> 30 jours)
+Schedule::command('queue:flush')->monthly();
 
-// ─── Nettoyage des notifications lues > 90 jours ──────
+// Nettoyage des notifications lues (> 90 jours)
 Schedule::call(function () {
     \App\Models\Notification::where('lu', true)
         ->where('created_at', '<', now()->subDays(90))
         ->delete();
 })->weekly()->name('clean-old-notifications')->withoutOverlapping();
-
-
-// Annonces vendeur : INTERDIT si KYC non validé
-/*Route::middleware(['auth:sanctum', 'role:vendeur', 'kyc'])->group(function () {
-    Route::post('/annonces', [AnnonceController::class, 'store']);
-});*/

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Annonce;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
 
 class AnnonceController extends Controller
 {
@@ -14,18 +15,54 @@ class AnnonceController extends Controller
         $query = Annonce::with(['images', 'vendeur']);
 
         if ($request->boolean('my')) {
-            // Récupérer le user depuis le token manuellement
             $user = auth('sanctum')->user();
             if ($user) {
                 $query->where('vendeur_id', $user->id);
             }
+            $query->latest('created_at');
         } else {
-            $query->where('statut', 'active');
+            
+            if ($request->filled('statut')) {
+                $query->where('statut', $request->statut);
+            } else {
+                $query->where('statut', 'active');
+            }
+
+            // Recherche texte
+            if ($request->filled('search')) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('titre', 'ILIKE', '%' . $request->search . '%')
+                    ->orWhere('categorie', 'ILIKE', '%' . $request->search . '%')
+                    ->orWhere('description', 'ILIKE', '%' . $request->search . '%');
+                });
+            }
+
+            // Filtre catégorie
+            if ($request->filled('categorie')) {
+                $query->where('categorie', $request->categorie);
+            }
+
+            // Filtre état
+            if ($request->filled('etat')) {
+                $query->where('etat', $request->etat);
+            }
+
+            // Tri — une seule fois, pas de double orderBy
+            if ($request->sort === 'prix_asc') {
+                $query->orderBy('prix_vendeur', 'asc');
+            } elseif ($request->sort === 'prix_desc') {
+                $query->orderBy('prix_vendeur', 'desc');
+            } else {
+                $query->latest('created_at');
+            }
         }
 
-        $annonces = $query->latest('created_at')->paginate(12);
+        // Supprime ce bloc — il causait un double orderBy et ignorait le tri
+        // if (!$request->filled('sort') || $request->boolean('my')) {
+        //     $query->latest('created_at');
+        // }
 
-        return response()->json($annonces);
+        return response()->json($query->paginate($request->per_page ?? 12));
     }
 
     // Enregistrer une nouvelle annonce
@@ -111,18 +148,71 @@ class AnnonceController extends Controller
     // Recherche
     public function search(Request $request)
     {
-        $query = $request->input('q');
-        
-        $annonces = Annonce::where('statut', 'active')
-            ->where(function($q) use ($query) {
-                $q->where('titre', 'ILIKE', "%{$query}%")
-                  ->orWhere('description', 'ILIKE', "%{$query}%")
-                  ->orWhere('categorie', 'ILIKE', "%{$query}%");
-            })
-            ->with('vendeur', 'images')
-            ->latest('created_at')
-            ->paginate(12);
+        $q = $request->input('q');
 
-        return response()->json($annonces);
+        $query = Annonce::where('statut', 'active')
+            ->where(function($query) use ($q) {
+                $query->where('titre', 'ILIKE', "%{$q}%")
+                    ->orWhere('description', 'ILIKE', "%{$q}%")
+                    ->orWhere('categorie', 'ILIKE', "%{$q}%");
+            })
+            ->with('vendeur', 'images');
+
+        // Filtres additionnels
+        if ($request->filled('categorie')) {
+            $query->where('categorie', $request->categorie);
+        }
+
+        if ($request->filled('etat')) {
+            $query->where('etat', $request->etat);
+        }
+
+        if ($request->sort === 'prix_asc') {
+            $query->orderBy('prix_vendeur', 'asc');
+        } elseif ($request->sort === 'prix_desc') {
+            $query->orderBy('prix_vendeur', 'desc');
+        } else {
+            $query->latest('created_at');
+        }
+
+        return response()->json($query->paginate(12));
+    }
+
+    public function countsParCategorie(): JsonResponse
+    {
+        $counts = Annonce::where('statut', 'active')
+            ->selectRaw('categorie, COUNT(*) as total')
+            ->groupBy('categorie')
+            ->pluck('total', 'categorie');
+
+        return response()->json($counts);
+    }
+
+    public function adminDestroy(Annonce $annonce): JsonResponse
+    {
+        //Vérifie si des commandes actives existent
+        $commandesActives = $annonce->commandes()
+            ->whereNotIn('statut', ['annulee', 'livree', 'cloturee'])
+            ->count();
+
+        if ($commandesActives > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Impossible de supprimer : {$commandesActives} commande(s) active(s) liée(s) à cette annonce.",
+            ], 422);
+        }
+
+        // Supprime les images du storage
+        foreach ($annonce->images as $img) {
+            \Storage::disk('public')->delete($img->image_url);
+            $img->delete();
+        }
+
+        $annonce->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Annonce supprimée.',
+        ]);
     }
 }
