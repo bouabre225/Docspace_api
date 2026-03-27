@@ -15,13 +15,27 @@ class AnnonceController extends Controller
         $query = Annonce::with(['images', 'vendeur']);
 
         if ($request->boolean('my')) {
-            // Récupérer le user depuis le token manuellement
             $user = auth('sanctum')->user();
             if ($user) {
                 $query->where('vendeur_id', $user->id);
             }
+            $query->latest('created_at');
         } else {
-            $query->where('statut', 'active');
+            
+            if ($request->filled('statut')) {
+                $query->where('statut', $request->statut);
+            } else {
+                $query->where('statut', 'active');
+            }
+
+            // Recherche texte
+            if ($request->filled('search')) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('titre', 'ILIKE', '%' . $request->search . '%')
+                    ->orWhere('categorie', 'ILIKE', '%' . $request->search . '%')
+                    ->orWhere('description', 'ILIKE', '%' . $request->search . '%');
+                });
+            }
 
             // Filtre catégorie
             if ($request->filled('categorie')) {
@@ -33,7 +47,7 @@ class AnnonceController extends Controller
                 $query->where('etat', $request->etat);
             }
 
-            // Tri
+            // Tri — une seule fois, pas de double orderBy
             if ($request->sort === 'prix_asc') {
                 $query->orderBy('prix_vendeur', 'asc');
             } elseif ($request->sort === 'prix_desc') {
@@ -42,14 +56,13 @@ class AnnonceController extends Controller
                 $query->latest('created_at');
             }
         }
-        // Si pas de tri spécifié (mode 'my' aussi)
-        if (!$request->filled('sort') || $request->boolean('my')) {
-            $query->latest('created_at');
-        }
 
-        $annonces = $query->paginate($request->per_page ?? 12);
+        // Supprime ce bloc — il causait un double orderBy et ignorait le tri
+        // if (!$request->filled('sort') || $request->boolean('my')) {
+        //     $query->latest('created_at');
+        // }
 
-        return response()->json($annonces);
+        return response()->json($query->paginate($request->per_page ?? 12));
     }
 
     // Enregistrer une nouvelle annonce
@@ -177,9 +190,21 @@ class AnnonceController extends Controller
 
     public function adminDestroy(Annonce $annonce): JsonResponse
     {
-        // Supprime les images associées
+        //Vérifie si des commandes actives existent
+        $commandesActives = $annonce->commandes()
+            ->whereNotIn('statut', ['annulee', 'livree', 'cloturee'])
+            ->count();
+
+        if ($commandesActives > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Impossible de supprimer : {$commandesActives} commande(s) active(s) liée(s) à cette annonce.",
+            ], 422);
+        }
+
+        // Supprime les images du storage
         foreach ($annonce->images as $img) {
-            \Storage::delete('public/' . $img->image_url);
+            \Storage::disk('public')->delete($img->image_url);
             $img->delete();
         }
 
@@ -187,7 +212,7 @@ class AnnonceController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Annonce supprimée par l\'admin',
+            'message' => 'Annonce supprimée.',
         ]);
     }
 }
