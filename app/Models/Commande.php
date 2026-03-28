@@ -15,7 +15,9 @@ class Commande extends Model
         'annonce_id',
         'quantite',
         'montant',
-        'statut'
+        'statut',
+        'adresse_livraison',
+        'telephone_livraison',
     ];
 
     protected $casts = [
