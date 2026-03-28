@@ -22,11 +22,13 @@ class CommandeController extends Controller
         $validated = $request->validate([
             'annonce_id' => 'required|string|exists:annonces,id',
             'quantite'   => 'required|integer|min:1',
+            'adresse_livraison'   => 'required|string|max:255',
+            'telephone_livraison' => 'required|string|max:20',
         ]);
 
         $annonce = \App\Models\Annonce::findOrFail($validated['annonce_id']);
 
-        // ✅ Empêche un vendeur de commander son propre article
+        //Empêche un vendeur de commander son propre article
         if ($annonce->vendeur_id === $request->user()->id) {
             return response()->json([
                 'success' => false,
@@ -37,7 +39,11 @@ class CommandeController extends Controller
         $commande = $this->commandeService->createOrder(
             $request->user(),
             $validated['annonce_id'],
-            $validated['quantite']
+            $validated['quantite'],
+            [
+                'adresse_livraison'   => $validated['adresse_livraison'],
+                'telephone_livraison' => $validated['telephone_livraison'],
+            ]
         );
         //\Log::info('Commande créée', ['commande' => $commande]);
 
