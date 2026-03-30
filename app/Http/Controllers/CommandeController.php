@@ -161,9 +161,17 @@ class CommandeController extends Controller
 
     public function marquerLivree(Request $request, Commande $commande): JsonResponse
     {
-        // Seul admin peut appeler cette route
-        if ($request->user()->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Non autorisé'], 403);
+        $user = $request->user();
+
+        //Admin OU vendeur de la commande peuvent marquer livrée
+        $isAdmin   = $user->role === 'admin';
+        $isVendeur = $user->role === 'vendeur' && $commande->vendeur_id === $user->id;
+
+        if (!$isAdmin && !$isVendeur) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non autorisé'
+            ], 403);
         }
 
         if ($commande->statut !== 'payee') {
@@ -176,7 +184,6 @@ class CommandeController extends Controller
         $commande->update(['statut' => 'livree']);
         $commande->load(['acheteur', 'vendeur', 'annonce']);
 
-        // ✅ Notifie acheteur + vendeur
         event(new CommandeStatusChanged($commande, 'payee'));
 
         return response()->json([
