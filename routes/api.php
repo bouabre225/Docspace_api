@@ -91,6 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [CommandeController::class, 'store']);
         Route::get('/recues', [CommandeController::class, 'recues']);
         Route::get('/{commande}', [CommandeController::class, 'show']);
+        Route::patch('/{commande}/livrer', [CommandeController::class, 'marquerLivree']);
         Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);
         Route::post('/{commande}/pay', [PaiementWebhookController::class, 'pay']);
         Route::post('/{commande}/verify', [PaiementWebhookController::class, 'verify']);
@@ -143,7 +144,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Commandes, Litiges & Annonces
         Route::get('/commandes', [CommandeController::class, 'adminIndex']);
-        Route::patch('/commandes/{commande}/livrer', [CommandeController::class, 'marquerLivree']);
         Route::delete('/annonces/{annonce}', [AnnonceController::class, 'adminDestroy']);
         
         Route::prefix('litiges')->group(function () {
