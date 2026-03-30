@@ -86,6 +86,23 @@
             <div class="commentaire">{{ $commentaire }}</div>
         @endif
 
+        {{-- Instruction livraison pour le vendeur --}}
+        @if(($type ?? '') === 'commande' && str_contains($contenu ?? '', 'payée'))
+        <div style="margin: 20px 0; padding: 16px 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px;">
+            <p style="font-size: 14px; font-weight: 700; color: #166534; margin-bottom: 8px;">
+                📋 Action requise de votre part
+            </p>
+            <p style="font-size: 13px; color: #15803d; line-height: 1.6;">
+                Une fois l'équipement remis à l'acheteur, pensez à <strong>marquer la commande comme livrée</strong>
+                depuis votre profil dans la section <strong>"Commandes reçues"</strong>.
+                Cela permet de valider la transaction et de rassurer l'acheteur.
+            </p>
+            <p style="margin-top: 10px; font-size: 13px; color: #15803d;">
+                👉 Profil → Commandes reçues → Bouton <strong>"Marquer livrée"</strong>
+            </p>
+        </div>
+        @endif
+
         {{-- CTA --}}
         @if(!empty($reference ?? null) && !empty($reference_id ?? null))
         @php
