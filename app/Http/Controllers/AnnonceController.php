@@ -188,21 +188,25 @@ class AnnonceController extends Controller
         return response()->json($counts);
     }
 
-    public function adminDestroy(Annonce $annonce): JsonResponse
+    public function adminDestroy(Request $request, Annonce $annonce): JsonResponse
     {
-        //Vérifie si des commandes actives existent
-        $commandesActives = $annonce->commandes()
-            ->whereNotIn('statut', ['annulee', 'livree', 'cloturee'])
-            ->count();
+        $force = $request->boolean('force', false);
 
-        if ($commandesActives > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => "Impossible de supprimer : {$commandesActives} commande(s) active(s) liée(s) à cette annonce.",
-            ], 422);
+        if (!$force) {
+            $commandesActives = $annonce->commandes()
+                ->whereNotIn('statut', ['annulee', 'livree', 'cloturee'])
+                ->count();
+
+            if ($commandesActives > 0) {
+                return response()->json([
+                    'success'           => false,
+                    'message'           => "Impossible de supprimer : {$commandesActives} commande(s) active(s) liée(s) à cette annonce.",
+                    'has_commandes'     => true, // ✅ flag pour le frontend
+                    'commandes_count'   => $commandesActives,
+                ], 422);
+            }
         }
 
-        // Supprime les images du storage
         foreach ($annonce->images as $img) {
             \Storage::disk('public')->delete($img->image_url);
             $img->delete();
@@ -210,9 +214,6 @@ class AnnonceController extends Controller
 
         $annonce->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Annonce supprimée.',
-        ]);
+        return response()->json(['success' => true, 'message' => 'Annonce supprimée.']);
     }
 }
