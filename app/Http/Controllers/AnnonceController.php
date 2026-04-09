@@ -190,7 +190,7 @@ class AnnonceController extends Controller
 
     public function adminDestroy(Request $request, Annonce $annonce): JsonResponse
     {
-        $force = $request->boolean('force', false);
+        $force = $request->query('force') === 'true' || $request->query('force') === '1';
 
         if (!$force) {
             $commandesActives = $annonce->commandes()
@@ -199,19 +199,36 @@ class AnnonceController extends Controller
 
             if ($commandesActives > 0) {
                 return response()->json([
-                    'success'           => false,
-                    'message'           => "Impossible de supprimer : {$commandesActives} commande(s) active(s) liée(s) à cette annonce.",
-                    'has_commandes'     => true, // ✅ flag pour le frontend
-                    'commandes_count'   => $commandesActives,
+                    'success'         => false,
+                    'message'         => "Impossible de supprimer : {$commandesActives} commande(s) active(s) liée(s) à cette annonce.",
+                    'has_commandes'   => true,
+                    'commandes_count' => $commandesActives,
                 ], 422);
             }
         }
 
+        // ✅ Supprime dans le bon ordre (respecte les FK)
+        foreach ($annonce->commandes as $commande) {
+            // 1. Supprimer les avis liés à la commande
+            \App\Models\Avis::where('commande_id', $commande->id)->delete();
+
+            // 2. Supprimer les litiges liés à la commande
+            \App\Models\Litige::where('commande_id', $commande->id)->delete();
+
+            // 3. Supprimer les paiements (CASCADE déjà en place mais on force)
+            \App\Models\Paiement::where('commande_id', $commande->id)->delete();
+
+            // 4. Supprimer la commande
+            $commande->delete();
+        }
+
+        // ✅ Supprime les images du storage
         foreach ($annonce->images as $img) {
             \Storage::disk('public')->delete($img->image_url);
             $img->delete();
         }
 
+        // ✅ Supprime l'annonce
         $annonce->delete();
 
         return response()->json(['success' => true, 'message' => 'Annonce supprimée.']);
