@@ -63,14 +63,8 @@ class Annonce extends Model
 
     public function noteMoyenne()
     {
-        $commandeIds = $this->commandes()->pluck('id');
-        $avis = Avis::whereIn('commande_id', $commandeIds)->get();
-
-        if ($avis->count() === 0) return 0;
-
-        return round(
-            ($avis->sum('note_vendeur') + $avis->sum('note_conformite')) / 2 / $avis->count(),
-            1
-        );
+        return round((float) (Avis::whereIn('commande_id', $this->commandes()->select('id'))
+            ->selectRaw('coalesce(avg((note_vendeur + note_conformite) / 2.0), 0) as note')
+            ->value('note') ?? 0), 1);
     }
 }

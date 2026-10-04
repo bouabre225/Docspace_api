@@ -7,7 +7,7 @@ use App\Http\Controllers\{
     MessageController, CommandeController, KycController,
     PaiementWebhookController, AuthController, GoogleAuthController,
     MeController, TwoFactorController, LitigeController, ContactController,
-    AdminKycController
+    AdminKycController, AvisController
 };
 use App\Http\Controllers\admin\{adminController, UserAdminController, StatsController};
 
@@ -24,6 +24,7 @@ Route::prefix('annonces')->group(function () {
     Route::get('/', [AnnonceController::class, 'index']);
     Route::get('/search', [AnnonceController::class, 'search']);
     Route::get('/counts-categorie', [AnnonceController::class, 'countsParCategorie']);
+    Route::get('/{annonce}/avis', [AvisController::class, 'index']);
     Route::get('/{annonce}', [AnnonceController::class, 'show']);
 });
 
@@ -94,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/recues', [CommandeController::class, 'recues']);
         Route::get('/stats-vendeur', [CommandeController::class, 'statsVendeur']);
         Route::get('/{commande}', [CommandeController::class, 'show']);
+        Route::post('/{commande}/avis', [AvisController::class, 'store'])->middleware('throttle:10,1');
         Route::patch('/{commande}/livrer', [CommandeController::class, 'marquerLivree']);
         Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);
         Route::post('/{commande}/pay', [PaiementWebhookController::class, 'pay']);
@@ -106,6 +108,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{litige}', [LitigeController::class, 'show']);
         Route::post('/', [LitigeController::class, 'store']);
     });
+
+    Route::delete('/avis/{avis}', [AvisController::class, 'destroy']);
 
     /* --- ESPACE VENDEUR --- */
     Route::middleware(['role:vendeur'])->group(function () {

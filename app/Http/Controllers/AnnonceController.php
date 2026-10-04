@@ -9,6 +9,29 @@ use Illuminate\Http\JsonResponse;
 
 class AnnonceController extends Controller
 {
+    /**
+     * Ajoute note_moyenne + nb_avis à chaque annonce d'un paginator (1 seule requête).
+     */
+    private function ajouterNotes($paginator)
+    {
+        $ids = collect($paginator->items())->pluck('id');
+        if ($ids->isEmpty()) return $paginator;
+
+        $notes = \App\Models\Avis::join('commandes as c', 'c.id', '=', 'avis.commande_id')
+            ->whereIn('c.annonce_id', $ids)
+            ->selectRaw('c.annonce_id, round(avg((avis.note_vendeur + avis.note_conformite) / 2.0), 1) as note, count(*) as total')
+            ->groupBy('c.annonce_id')
+            ->get()->keyBy('annonce_id');
+
+        foreach ($paginator->items() as $annonce) {
+            $n = $notes->get($annonce->id);
+            $annonce->note_moyenne = $n ? (float) $n->note : 0;
+            $annonce->nb_avis = $n ? (int) $n->total : 0;
+        }
+
+        return $paginator;
+    }
+
     // Liste toutes les annonces actives
     public function index(Request $request)
     {
@@ -71,7 +94,7 @@ class AnnonceController extends Controller
         //     $query->latest('created_at');
         // }
 
-        return response()->json($query->paginate(min((int) $request->input('per_page', 12), 100)));
+        return response()->json($this->ajouterNotes($query->paginate(min((int) $request->input('per_page', 12), 100))));
     }
 
     // Enregistrer une nouvelle annonce
@@ -191,7 +214,7 @@ class AnnonceController extends Controller
             $query->latest('created_at');
         }
 
-        return response()->json($query->paginate(min((int) $request->input('per_page', 12), 100)));
+        return response()->json($this->ajouterNotes($query->paginate(min((int) $request->input('per_page', 12), 100))));
     }
 
     public function countsParCategorie(): JsonResponse
