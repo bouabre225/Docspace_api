@@ -93,8 +93,7 @@ class PaiementWebhookController extends Controller
     }
 
     public function verify(Commande $commande)
-    {
-        if ($commande->acheteur_id !== auth()->id()) {
+    {        if ($commande->acheteur_id !== auth()->id()) {
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
@@ -137,5 +136,36 @@ class PaiementWebhookController extends Controller
             Log::error('Verify payment error', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
             return response()->json(['statut' => $commande->statut]);
         }
+    }
+
+    /**
+     * Renvoie la facture par email (acheteur de la commande ou admin).
+     * Utile si le mail initial est parti en spam / jamais reçu.
+     */
+    public function renvoyerFacture(Commande $commande)
+    {
+        $user = auth()->user();
+        $isAcheteur = $commande->acheteur_id === $user->id;
+        $isAdmin = $user->role === 'admin';
+
+        if (!$isAcheteur && !$isAdmin) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        if (!in_array($commande->statut, ['payee', 'livree', 'cloturee'])) {
+            return response()->json(['message' => 'Facture disponible uniquement après paiement.'], 422);
+        }
+
+        $commande->loadMissing(['acheteur', 'vendeur', 'annonce']);
+
+        try {
+            \Mail::to($commande->acheteur->email)
+                ->queue(new \App\Mail\FactureMail($commande));
+        } catch (\Exception $e) {
+            Log::error('Renvoi facture échoué', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
+            return response()->json(['message' => 'Envoi impossible pour le moment.'], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Facture envoyée à ' . $commande->acheteur->email]);
     }
 }
