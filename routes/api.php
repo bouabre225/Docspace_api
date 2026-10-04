@@ -7,7 +7,7 @@ use App\Http\Controllers\{
     MessageController, CommandeController, KycController,
     PaiementWebhookController, AuthController, GoogleAuthController,
     MeController, TwoFactorController, LitigeController, ContactController,
-    AdminKycController, AvisController
+    AdminKycController, AvisController, FavoriController
 };
 use App\Http\Controllers\admin\{adminController, UserAdminController, StatsController};
 
@@ -110,6 +110,11 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::delete('/avis/{avis}', [AvisController::class, 'destroy']);
+
+    // Favoris
+    Route::get('/favoris', [FavoriController::class, 'index']);
+    Route::post('/annonces/{annonce}/favori', [FavoriController::class, 'toggle']);
+    Route::post('/favoris/sync', [FavoriController::class, 'sync']);
 
     /* --- ESPACE VENDEUR --- */
     Route::middleware(['role:vendeur'])->group(function () {

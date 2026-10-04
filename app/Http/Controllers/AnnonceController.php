@@ -129,7 +129,9 @@ class AnnonceController extends Controller
         
         $commandeIds = $annonce->commandes()->pluck('id');
         $avis = \App\Models\Avis::whereIn('commande_id', $commandeIds)
-            ->with('vendeur:id,nom,avatar')  // si tu as une relation vendeur sur Avis
+            ->with('commande.acheteur:id,nom,avatar')
+            ->latest('created_at')
+            ->limit(20)
             ->get();
 
         return response()->json([

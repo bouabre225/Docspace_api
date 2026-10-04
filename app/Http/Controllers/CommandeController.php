@@ -189,6 +189,15 @@ class CommandeController extends Controller
             ->groupBy('a.id', 'a.titre', 'a.quantite', 'a.statut')
             ->orderByDesc('ca')->get();
 
+        $favorisParAnnonce = \App\Models\Favori::join('annonces as a', 'a.id', '=', 'favoris.annonce_id')
+            ->where('a.vendeur_id', $vendeurId)
+            ->selectRaw('a.id, count(*) as total')
+            ->groupBy('a.id')->pluck('total', 'id');
+        foreach ($parAnnonce as $row) {
+            $row->favoris = (int) ($favorisParAnnonce[$row->id] ?? 0);
+        }
+        $totalFavoris = $favorisParAnnonce->sum();
+
         $annonces = \App\Models\Annonce::where('vendeur_id', $vendeurId);
         $recurrents = (clone $base)->selectRaw('acheteur_id, count(*) as commandes, coalesce(sum(case when statut in (\'payee\',\'livree\',\'cloturee\') then montant else 0 end),0) as total')
             ->groupBy('acheteur_id')->havingRaw('count(*) >= 2')->orderByDesc('total')->limit(10)->get()
@@ -213,6 +222,7 @@ class CommandeController extends Controller
                 'stock_bas' => (clone $annonces)->where('statut', 'active')->where('quantite', '>', 0)->where('quantite', '<=', 2)->count(),
                 'note_moyenne' => (float) ($noteMoy->note ?? 0),
                 'avis_total' => (int) ($noteMoy->total ?? 0),
+                'interesses' => (int) $totalFavoris,
             ],
             'par_statut' => $parStatut,
             'serie' => $serie,
