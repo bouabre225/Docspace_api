@@ -19,7 +19,7 @@ class AnnonceImageController extends Controller
         }
 
         $validated = $request->validate([
-            'image' => 'required|image|max:10240' // 10MB max
+            'image' => 'required|file|mimes:jpeg,jpg,png,webp|max:2048' // 2 Mo max, pas de SVG
         ]);
 
         // Upload de l'image

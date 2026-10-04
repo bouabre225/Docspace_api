@@ -31,7 +31,7 @@ class KycController
     {
         $validated = $request->validate([
             'type_document' => 'required|in:cni,passeport,permis',
-            'fichier' => 'required|file|extensions:pdf,jpeg,png,jpg,doc,docx|max:5120',
+            'fichier' => 'required|file|mimes:pdf,jpeg,jpg,png|mimetypes:application/pdf,image/jpeg,image/png|max:5120',
         ]);
 
         $document = $this->kycService->submitDocument($request->user(), $validated);

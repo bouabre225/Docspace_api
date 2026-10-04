@@ -32,7 +32,7 @@ class EnvoyerSmsNotificationJob implements ShouldQueue
             return;
         }
 
-        $response = Http::withToken(config('services.fedapay.secret_key'))
+        $response = Http::withToken(config('services.fedapay.secret'))
             ->post('https://api.fedapay.com/v1/sms', [
                 'to'      => $this->user->telephone,
                 'message' => substr($this->notification->contenu, 0, 160),

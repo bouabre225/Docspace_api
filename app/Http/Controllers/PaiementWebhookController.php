@@ -68,12 +68,18 @@ class PaiementWebhookController extends Controller
 
    public function handleWebhook(Request $request)
     {
-        $expectedSecret = config('services.fedapay.webhook_secret');
-        if (!empty($expectedSecret)) {
-            $provided = $request->header('X-FedaPay-Signature') ?? $request->input('webhook_secret');
-            if (!hash_equals((string) $expectedSecret, (string) $provided)) {
+        $secret = config('services.fedapay.webhook_secret');
+        if (empty($secret)) {
+            Log::warning('FedaPay webhook: secret non configuré, vérification ignorée');
+        } else {
+            $signature = $request->header('X-FedaPay-Signature');
+            if (empty($signature)) {
+                return response()->json(['success' => false, 'message' => 'Signature manquante'], 401);
+            }
+            $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $secret);
+            if (!hash_equals($expected, (string) $signature)) {
                 Log::warning('FedaPay webhook signature invalide');
-                return response()->json(['success' => false, 'message' => 'Signature invalide'], 403);
+                return response()->json(['success' => false, 'message' => 'Signature invalide'], 401);
             }
         }
         Log::info('FedaPay webhook received', ['event' => $request->input('event')]);

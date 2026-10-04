@@ -178,9 +178,19 @@ class AuthController
         }
 
         if (!$twoFactorService->verifyActiveSecret($user, $data['code'])) {
+            $attempts = Cache::increment("login_2fa_attempts:{$data['challenge_id']}");
+            if ($attempts === 1) {
+                Cache::put("login_2fa_attempts:{$data['challenge_id']}", 1, now()->addMinutes(15));
+            }
+            if ($attempts >= 5) {
+                Cache::forget("login_2fa_challenge:{$data['challenge_id']}");
+                Cache::forget("login_2fa_attempts:{$data['challenge_id']}");
+                return response()->json(['message' => 'Trop de tentatives. Reconnecte-toi.'], 429);
+            }
             return response()->json(['message' => 'Code 2FA invalide'], 422);
         }
 
+        Cache::forget("login_2fa_attempts:{$data['challenge_id']}");
         Cache::forget("login_2fa_challenge:{$data['challenge_id']}");
 
         $issued = $authService->issueTokenAfter2fa(

@@ -142,7 +142,7 @@ class AuthService
         }
 
         if ($user->role !== 'admin') {
-            throw new \Exception('Accès réservé aux admins');
+            throw new \Exception('Identifiants invalides');
         }
 
         // Cette ligne est cruciale : elle génère le challenge_id et envoie le mail
