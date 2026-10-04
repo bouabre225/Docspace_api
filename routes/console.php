@@ -25,3 +25,6 @@ Schedule::call(function () {
         ->where('created_at', '<', now()->subDays(90))
         ->chunkById(1000, fn($rows) => \App\Models\Notification::whereIn('id', $rows->pluck('id'))->delete());
 })->weekly()->name('clean-old-notifications')->withoutOverlapping();
+
+// Digest quotidien admin (08h00)
+Schedule::command('admin:digest')->dailyAt('08:00')->withoutOverlapping();
