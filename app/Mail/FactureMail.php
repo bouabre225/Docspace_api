@@ -7,6 +7,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
 
 class FactureMail extends Mailable
@@ -19,6 +20,15 @@ class FactureMail extends Mailable
     {
         return new Envelope(
             subject: "Facture #" . strtoupper(substr($this->commande->id, 0, 8)) . " — DocSpace",
+        );
+    }
+
+    public function headers(): Headers
+    {
+        return new Headers(
+            text: [
+                'List-Unsubscribe' => '<https://docspace.bj/commandes/' . $this->commande->id . '>',
+            ],
         );
     }
 

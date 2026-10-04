@@ -42,6 +42,11 @@ class EnvoyerEmailNotificationJob implements ShouldQueue
             function ($message) {
                 $message->to($this->user->email, $this->user->nom ?? $this->user->email)
                         ->subject($this->sujetDepuisType($this->notification->type));
+                // Anti-spam : désinscription + expéditeur explicite
+                $message->getHeaders()->addTextHeader(
+                    'List-Unsubscribe',
+                    '<https://docspace.bj/notifications>'
+                );
             }
         );
 
