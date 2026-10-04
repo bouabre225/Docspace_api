@@ -26,7 +26,7 @@ class MeController
         $validated = $request->validate([
             'nom'       => ['sometimes', 'string', 'max:100'],
             'telephone' => ['sometimes', 'nullable', 'string', 'max:20'],
-            'pays'      => ['sometimes', 'nullable', 'string', 'max:100'],
+            'pays'      => ['sometimes', 'nullable', 'string', 'max:50', \Illuminate\Validation\Rule::in(\App\Support\Countries::list())],
             'adresse'   => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 

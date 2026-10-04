@@ -27,7 +27,7 @@ class RegisterBuyerRequest extends FormRequest
             'mot_de_passe' => 'required|string|min:10|confirmed',
             'telephone' => 'nullable|string|max:255',
             'adresse' => 'nullable|string|max:255',
-            'pays' => 'nullable|string|max:255',
+            'pays' => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Support\Countries::list())],
         ];
     }
 
