@@ -28,6 +28,7 @@ class RegisterSellerRequest extends FormRequest
             'telephone' => 'required|string|max:255',
             'adresse' => 'nullable|string|max:255',
             'pays' => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Support\Countries::list())],
+            'acceptTerms' => 'required|accepted',
             'type_compte' => 'nullable|in:particulier,professionnel'
         ];
     }
@@ -39,6 +40,7 @@ class RegisterSellerRequest extends FormRequest
     {
         return [
             'mot_de_passe' => 'password',
+            'acceptTerms' => 'conditions d\'utilisation',
         ];
     }
 

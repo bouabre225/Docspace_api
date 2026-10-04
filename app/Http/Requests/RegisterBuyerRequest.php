@@ -28,6 +28,7 @@ class RegisterBuyerRequest extends FormRequest
             'telephone' => 'nullable|string|max:255',
             'adresse' => 'nullable|string|max:255',
             'pays' => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Support\Countries::list())],
+            'acceptTerms' => 'required|accepted',
         ];
     }
 
@@ -38,6 +39,7 @@ class RegisterBuyerRequest extends FormRequest
     {
         return [
             'mot_de_passe' => 'password',
+            'acceptTerms' => 'conditions d\'utilisation',
         ];
     }
 

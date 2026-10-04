@@ -15,16 +15,17 @@ class GoogleAuthService
         $user = User::where('email', $googleUser->email)->first();
 
         if (!$user) {
-            $user = User::create([
+            $user = new User([
                 'google_id' => $googleUser->id,
                 'nom' => $googleUser->name ?? 'Utilisateur',
                 'email' => $googleUser->email,
-                'role' => 'acheteur',
-                'type_compte' => 'particulier',
-                'statut' => 'actif',
                 // obligatoire (NOT NULL) - mutator hash
                 'mot_de_passe' => Str::random(32),
             ]);
+            $user->role = 'acheteur';
+            $user->type_compte = 'particulier';
+            $user->statut = 'actif';
+            $user->save();
         } else {
             // Lier google_id si pas lié
             if (!$user->google_id) {

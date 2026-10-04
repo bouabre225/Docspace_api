@@ -24,17 +24,20 @@ class AuthService
         $password = $data['password'] ?? $data['mot_de_passe'] ?? null;
 
         //renvoi l'utilisateur créé
-        return User::create([
+        $user = new User([
             'nom' => $data['nom'],
             'email' => $data['email'],
             'mot_de_passe' => $password,
             'telephone' => $data['telephone'] ?? null,
             'pays' => $data['pays'] ?? 'Bénin',
             'adresse' => $data['adresse'] ?? null,
-            'role' => 'acheteur',
-            'statut' => 'actif',
-            'type_compte' => 'particulier',
         ]);
+        $user->role = 'acheteur';
+        $user->statut = 'actif';
+        $user->type_compte = 'particulier';
+        $user->save();
+
+        return $user;
     }
 
     /**
@@ -54,18 +57,21 @@ class AuthService
         $password = $data['password'] ?? $data['mot_de_passe'] ?? null;
 
         //renvoi l'utilisateur créé
-        return User::create([
+        $user = new User([
             'nom' => $data['nom'],
             'email' => $data['email'],
             'mot_de_passe' => $password,
             'telephone' => $data['telephone'] ?? null,
             'pays' => $data['pays'] ?? 'Bénin',
             'adresse' => $data['adresse'] ?? null,
-            'role' => 'vendeur',
-            'statut' => 'actif',
-            'type_compte' => $typeCompte,
-            'verifie_kyc' => false,
         ]);
+        $user->role = 'vendeur';
+        $user->statut = 'actif';
+        $user->type_compte = $typeCompte;
+        $user->verifie_kyc = false;
+        $user->save();
+
+        return $user;
     }
 
 
