@@ -9,7 +9,7 @@ use App\Http\Controllers\{
     MeController, TwoFactorController, LitigeController, ContactController,
     AdminKycController
 };
-use App\Http\Controllers\admin\{adminController, UserAdminController};
+use App\Http\Controllers\admin\{adminController, UserAdminController, StatsController};
 
 /*
 |--------------------------------------------------------------------------
@@ -150,6 +150,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
         // Commandes, Litiges & Annonces
+        Route::get('/stats', [StatsController::class, 'index']);
         Route::get('/commandes', [CommandeController::class, 'adminIndex']);
         Route::delete('/annonces/{annonce}', [AnnonceController::class, 'adminDestroy']);
         
