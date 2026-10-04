@@ -28,6 +28,10 @@ class PaiementWebhookController extends Controller
             return response()->json(['success' => false, 'message' => 'Cette commande ne peut pas être payée'], 400);
         }
 
+        if ((int) $commande->montant < 100) {
+            return response()->json(['success' => false, 'message' => 'Montant minimum 100 FCFA pour le paiement en ligne (FedaPay).'], 422);
+        }
+
         // Si un paiement en_attente existe depuis + d'1 min, le supprimer pour permettre un nouveau
         if ($commande->paiement && $commande->paiement->statut === 'en_attente') {
             if ($commande->paiement->created_at->diffInMinutes(now()) >= 1) {

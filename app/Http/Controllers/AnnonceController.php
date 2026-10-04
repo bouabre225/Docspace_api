@@ -80,7 +80,7 @@ class AnnonceController extends Controller
         $validated = $request->validate([
             'titre' => 'required|string|max:200',
             'description' => 'nullable|string|max:5000',
-            'prix_vendeur' => 'required|numeric|min:1',
+            'prix_vendeur' => 'required|numeric|min:100',
             'categorie' => 'nullable|string|max:100',
             'etat' => 'required|in:neuf,tres_bon,bon,acceptable,occasion,reconditionne',
             'quantite' => 'required|integer|min:1|max:10000',
@@ -126,7 +126,7 @@ class AnnonceController extends Controller
         $validated = $request->validate([
             'titre' => 'nullable|string|max:200',
             'description' => 'nullable|string|max:5000',
-            'prix_vendeur' => 'nullable|numeric|min:1',
+            'prix_vendeur' => 'nullable|numeric|min:100',
             'categorie' => 'nullable|string|max:100',
             'etat' => 'nullable|in:neuf,tres_bon,bon,acceptable,occasion,reconditionne',
             'quantite' => 'nullable|integer|min:1|max:10000',
