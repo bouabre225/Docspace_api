@@ -34,12 +34,14 @@ class AdminKycController
         }
 
         $decision    = $request->validated()['decision'];
+        $commentaire = $request->validated()['commentaire'] ?? null;
 
         $updated = $service->validateDocument(  // ← méthode correcte dans KycService
             $doc,
             $request->user(),
             $decision,
             $request->ip(),
+            $commentaire,
         );
 
         $this->notificationService->notifierResultatKyc(
