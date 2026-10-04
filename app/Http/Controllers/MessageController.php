@@ -17,13 +17,37 @@ class MessageController extends Controller
     {
         $userId = (string) Auth::id();
 
-        $conversations = Message::with(['expediteur:id,nom,email,avatar', 'recepteur:id,nom,email,avatar'])
+        $messages = Message::with(['expediteur:id,nom,email,avatar', 'recepteur:id,nom,email,avatar', 'annonce:id,titre'])
             ->where('expediteur_id', $userId)
             ->orWhere('recepteur_id', $userId)
-            ->latest()
-            ->paginate(20);
+            ->latest('created_at')
+            ->limit(200)
+            ->get();
 
-        return response()->json($conversations);
+        $conversations = [];
+        foreach ($messages as $m) {
+            $isSender = (string) $m->expediteur_id === $userId;
+            $other = $isSender ? $m->recepteur : $m->expediteur;
+            if (!$other) continue;
+            $oid = (string) $other->id;
+            if (!isset($conversations[$oid])) {
+                $conversations[$oid] = [
+                    'id' => $oid,
+                    'name' => $other->nom,
+                    'email' => $other->email,
+                    'avatar' => $other->avatar,
+                    'dernier_message' => $m->created_at,
+                    'dernier_contenu' => $m->contenu,
+                    'annonce' => $m->annonce,
+                    'non_lus' => 0,
+                ];
+            }
+            if (!$isSender && !$m->lu) {
+                $conversations[$oid]['non_lus']++;
+            }
+        }
+
+        return response()->json(array_values($conversations));
     }
 
     // Conversation avec un utilisateur
