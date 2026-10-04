@@ -44,8 +44,9 @@ class AnnonceImageController extends Controller
     // Supprimer une image
     public function destroy(AnnonceImage $image)
     {
+        $image->loadMissing('annonce');
         // Vérifier que c'est le propriétaire de l'annonce
-        if ($image->annonce->vendeur_id !== Auth::id()) {
+        if (!$image->annonce || $image->annonce->vendeur_id !== Auth::id()) {
             return response()->json(['message' => 'Action non autorisée'], 403);
         }
 
@@ -71,11 +72,12 @@ class AnnonceImageController extends Controller
         $validated = $request->validate([
             'images' => 'required|array',
             'images.*.id' => 'required|exists:annonce_images,id',
-            'images.*.ordre' => 'required|integer'
+            'images.*.ordre' => 'required|integer|distinct'
         ]);
 
         foreach ($validated['images'] as $imageData) {
             AnnonceImage::where('id', $imageData['id'])
+                ->where('annonce_id', $annonce->id)
                 ->update(['ordre' => $imageData['ordre']]);
         }
 

@@ -79,13 +79,17 @@ class paiementService
     public function handleWebhookEvent(string $event, string $transactionId)
     {
         return DB::transaction(function () use ($event, $transactionId) {
-            $paiement = Paiement::where('provider_reference', 'LIKE', "%{$transactionId}%")
+            $paiement = Paiement::where('provider_reference', $transactionId)
                 ->firstOrFail();
 
             $commande = $paiement->commande;
 
             switch ($event) {
                 case 'transaction.approved':
+                    if (in_array($paiement->statut, ['bloque', 'libere', 'rembourse'])) {
+                        Log::info('Webhook idempotent: paiement déjà traité', ['paiement_id' => $paiement->id]);
+                        return $paiement->fresh();
+                    }
                     $paiement->update([
                         'statut' => 'bloque',
                         'date_paiement' => now(),
@@ -101,8 +105,12 @@ class paiementService
                     event(new CommandeStatusChanged($commande, 'payee'));
 
                     // Envoyer la facture à l'acheteur
-                    Mail::to($commande->acheteur->email)
-                        ->queue(new FactureMail($commande));
+                    try {
+                        Mail::to($commande->acheteur->email)
+                            ->queue(new FactureMail($commande));
+                    } catch (\Exception $e) {
+                        Log::error('Envoi facture échoué', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
+                    }
 
                     Log::info('Payment approved + facture envoyée', [
                         'transaction_id' => $transactionId,
@@ -113,7 +121,7 @@ class paiementService
                 case 'transaction.canceled':
                     $paiement->update(['statut' => 'annule']);
                     $commande->update(['statut' => 'annulee']);
-                    $commande->annonce->increment('quantite', $commande->quantite);
+                    $commande->annonce?->increment('quantite', $commande->quantite);
 
                     Log::warning('Payment canceled', [
                         'transaction_id' => $transactionId,

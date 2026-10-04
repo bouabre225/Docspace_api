@@ -23,13 +23,24 @@ class GoogleAuthController extends Controller
      */
     public function callback(GoogleAuthService $service)
     {
-        $googleUser = Socialite::driver('google')->stateless()->user();
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Google OAuth échoué', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Authentification Google échouée.'], 401);
+        }
 
-        // JSON (ok pour debug). En prod tu peux redirect frontend avec token.
-        return response()->json($service->handleGoogleUser((object) [
+        $result = $service->handleGoogleUser((object) [
             'id' => $googleUser->getId(),
             'email' => $googleUser->getEmail(),
             'name' => $googleUser->getName(),
-        ]));
+        ]);
+
+        if (isset($result['message']) && !isset($result['token'])) {
+            return response()->json($result, 423);
+        }
+
+        // JSON (ok pour debug). En prod tu peux redirect frontend avec token.
+        return response()->json($result);
     }
 }

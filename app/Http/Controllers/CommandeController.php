@@ -126,10 +126,12 @@ class CommandeController extends Controller
             ], 400);
         }
 
-        $commande->update(['statut' => 'annulee']);
-        $commande->annonce->increment('quantite', $commande->quantite);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($commande) {
+            $commande->update(['statut' => 'annulee']);
+            $commande->annonce?->increment('quantite', $commande->quantite);
+        });
 
-        event(new \App\Events\CommandeStatusChanged($commande, 'annulee'));
+        event(new \App\Events\CommandeStatusChanged($commande->fresh(), 'annulee'));
 
         return response()->json([
             'success' => true,

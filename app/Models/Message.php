@@ -14,7 +14,7 @@ class Message extends Model
     const CREATED_AT = 'created_at';
 
     protected $fillable = [
-        'expediteur_id', 'recepteur_id', 'annonce_id', 'contenu', 'lu', 'created_at'
+        'expediteur_id', 'recepteur_id', 'annonce_id', 'contenu', 'lu'
     ];
 
     protected $casts = [

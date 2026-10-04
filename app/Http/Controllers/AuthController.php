@@ -142,7 +142,9 @@ class AuthController
             ], 200);
 
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 403);
+            $code = (int) $e->getCode();
+            $code = ($code >= 100 && $code < 600) ? $code : 423;
+            return response()->json(['message' => $e->getMessage()], $code);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 403);
         }
@@ -219,8 +221,8 @@ class AuthController
         $request->validate([
             'token'                 => 'required',
             'email'                 => 'required|email',
-            'mot_de_passe'          => 'required|min:8|same:password_confirmation',
-            'password_confirmation' => 'required',
+            'mot_de_passe'          => 'required|min:10|confirmed',
+            'mot_de_passe_confirmation' => 'required',
         ]);
 
         // Vérifie le token manuellement
@@ -236,7 +238,7 @@ class AuthController
             return response()->json(['message' => 'Token invalide ou expiré.'], 422);
         }
 
-        if (now()->diffInMinutes($record->created_at) > 60) {
+        if (now()->diffInMinutes(\Carbon\Carbon::parse($record->created_at)) > 60) {
             return response()->json(['message' => 'Token expiré.'], 422);
         }
 
@@ -249,6 +251,7 @@ class AuthController
 
         $user->mot_de_passe = $request->mot_de_passe;
         $user->save();
+        $user->tokens()->delete();
 
         // Supprime le token
         DB::table('password_reset_tokens')->where('email', $request->email)->delete();

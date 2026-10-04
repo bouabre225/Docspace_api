@@ -10,15 +10,15 @@ class Annonce extends Model
 {
     use HasFactory, HasUuid;
 
-    protected $keyType = 'int';
-    public $incrementing = true;
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     public $timestamps = true;
     const CREATED_AT = 'created_at';
 
     protected $fillable = [
-        'vendeur_id', 'titre', 'description', 'categorie',
-        'etat', 'prix_vendeur', 'quantite', 'pays_expedition', 'statut'
+        'titre', 'description', 'categorie',
+        'etat', 'prix_vendeur', 'quantite', 'pays_expedition'
     ];
 
     protected $casts = [

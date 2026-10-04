@@ -7,7 +7,7 @@ class FedaPayGateway
 {
     public function createTransaction(array $payload)
     {
-        return Http::withToken(config('services.fedapay.key'))
+        return Http::withToken(config('services.fedapay.secret'))
             ->post(
                 config('services.fedapay.base_url').'/transactions',
                 $payload
@@ -18,7 +18,7 @@ class FedaPayGateway
 
     public function getTransaction(string $transactionId)
     {
-        return Http::withToken(config('services.fedapay.key'))
+        return Http::withToken(config('services.fedapay.secret'))
             ->get(
                 config('services.fedapay.base_url')."/transactions/{$transactionId}"
             )

@@ -25,10 +25,6 @@ class User extends Authenticatable implements CanResetPasswordContract
      * @var list<string>
      */
     protected $fillable = [
-        'google_id',
-        'avatar',
-        'role',
-        'type_compte',
         'nom',
         'email',
         'mot_de_passe',
@@ -37,12 +33,8 @@ class User extends Authenticatable implements CanResetPasswordContract
         'pays',
         'devise',
         'adresse',
-        'two_factor_secret',
-        'verifie_kyc',
-        'badge_verifie',
-        'note_moyenne',
-        'statut',
-        'two_factor_enable_at',
+        'avatar',
+        'google_id',
     ];
 
     /**
@@ -54,6 +46,7 @@ class User extends Authenticatable implements CanResetPasswordContract
         'mot_de_passe',
         'two_factor_secret',
         'fcm_token',
+        'google_id',
     ];
 
     /**
@@ -69,7 +62,7 @@ class User extends Authenticatable implements CanResetPasswordContract
             'note_moyenne' => 'decimal:1',
             'two_factor_enable_at' => 'datetime',
             'created_at' => 'datetime',
-            'update_at' => 'datetime'
+            'updated_at' => 'datetime'
         ];
     }
 
@@ -78,12 +71,7 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function setMotDePasseAttribute($value)
     {
-        /*if (is_string($value) && str_starts_with('$2y$')) {
-            $this->attributes['mot_de_passe'] = $value;
-            return;
-        }*/
-
-        $this->attributes['mot_de_passe'] = bcrypt($value);
+        $this->attributes['mot_de_passe'] = \Illuminate\Support\Facades\Hash::make($value);
     }
 
     /**

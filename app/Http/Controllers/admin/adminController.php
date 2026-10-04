@@ -11,20 +11,20 @@ class adminController extends Controller
 {
     public function validateKyc(
         Request $request,
-        KycDocument $kycDocument,
+        KycDocument $document,
         KycService $kycService
     ){
         $request->validate([
-            'decision' => 'required|in:valide, refuse',
-            'commentaire' => 'required|string',
+            'decision' => 'required|in:valide,refuse',
+            'commentaire' => 'nullable|string|max:500',
         ]);
 
         $kycService->validateDocument(
-            $kycDocument,
+            $document,
             $request->user(),
             $request->decision,
-            $request->commentaire,
-            $request->ip()
+            $request->ip(),
+            $request->commentaire
         );
 
         return response()->json(['status' => true]);

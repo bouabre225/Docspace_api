@@ -22,9 +22,17 @@ class loginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => 'required|string|email|max:255|exists:users',
+            'email' => 'required|string|email|max:255',
             'mot_de_passe' => 'required|string|min:6',
             'device_name' => 'nullable|string|max:100'
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'email.required' => 'Identifiants invalides.',
+            'mot_de_passe.required' => 'Identifiants invalides.',
         ];
     }
 

@@ -54,7 +54,10 @@ class LitigeController extends Controller
 
         // Vérifier que l'user est impliqué dans la commande liée
         $commande = $litige->commande;
-        if ($commande->acheteur_id !== $user->id && $commande->vendeur_id !== $user->id) {
+        if (!$commande) {
+            return response()->json(['success' => false, 'message' => 'Commande introuvable.'], 404);
+        }
+        if ($commande->acheteur_id !== $user->id && $commande->vendeur_id !== $user->id && $user->role !== 'admin') {
             return response()->json(['success' => false, 'message' => 'Non autorisé.'], 403);
         }
 
@@ -82,7 +85,7 @@ class LitigeController extends Controller
     {
         $validated = $request->validate([
             'commande_id' => 'required|exists:commandes,id',
-            'motif'       => 'required|string',
+            'motif'       => 'required|in:non_conforme,defectueux,perdu',
             'preuves'     => 'nullable|string|max:2000',
         ]);
 
@@ -163,7 +166,7 @@ class LitigeController extends Controller
      */
     public function prendreEnCharge(Litige $litige): JsonResponse
     {
-        if (!in_array($litige->statut, ['ouvert', 'en_attente'])) {
+        if ($litige->statut !== 'ouvert') {
             return response()->json([
                 'success' => false,
                 'message' => 'Ce litige n\'est pas dans un état ouvert.',

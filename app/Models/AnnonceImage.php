@@ -10,8 +10,8 @@ class AnnonceImage extends Model
 {
     use HasFactory, HasUuid;
 
-    protected $keyType = 'int';
-    public $incrementing = true;
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     public $timestamps = false;
 

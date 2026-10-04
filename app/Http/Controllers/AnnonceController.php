@@ -12,6 +12,14 @@ class AnnonceController extends Controller
     // Liste toutes les annonces actives
     public function index(Request $request)
     {
+        $request->validate([
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'statut' => 'nullable|in:active,vendue,suspendue',
+            'etat' => 'nullable|in:neuf,tres_bon,bon,acceptable,occasion,reconditionne',
+            'search' => 'nullable|string|max:100',
+            'categorie' => 'nullable|string|max:100',
+            'sort' => 'nullable|in:prix_asc,prix_desc,recent',
+        ]);
         $query = Annonce::with(['images', 'vendeur']);
 
         if ($request->boolean('my')) {
@@ -28,12 +36,13 @@ class AnnonceController extends Controller
                 $query->where('statut', 'active');
             }
 
-            // Recherche texte
+            // Recherche texte (portable PG + SQLite)
             if ($request->filled('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('titre', 'ILIKE', '%' . $request->search . '%')
-                    ->orWhere('categorie', 'ILIKE', '%' . $request->search . '%')
-                    ->orWhere('description', 'ILIKE', '%' . $request->search . '%');
+                $search = mb_strtolower($request->search);
+                $query->where(function ($q) use ($search) {
+                    $q->whereRaw('LOWER(titre) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(categorie) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(description) LIKE ?', ['%' . $search . '%']);
                 });
             }
 
@@ -62,7 +71,7 @@ class AnnonceController extends Controller
         //     $query->latest('created_at');
         // }
 
-        return response()->json($query->paginate($request->per_page ?? 12));
+        return response()->json($query->paginate(min((int) $request->input('per_page', 12), 100)));
     }
 
     // Enregistrer une nouvelle annonce
@@ -70,11 +79,11 @@ class AnnonceController extends Controller
     {
         $validated = $request->validate([
             'titre' => 'required|string|max:200',
-            'description' => 'nullable|string',
-            'prix_vendeur' => 'required|numeric|min:0',
+            'description' => 'nullable|string|max:5000',
+            'prix_vendeur' => 'required|numeric|min:1',
             'categorie' => 'nullable|string|max:100',
-            'etat' => 'required|string',
-            'quantite' => 'required|integer|min:1',
+            'etat' => 'required|in:neuf,tres_bon,bon,acceptable,occasion,reconditionne',
+            'quantite' => 'required|integer|min:1|max:10000',
             'pays_expedition' => 'nullable|string|max:50'
         ]);
 
@@ -116,11 +125,11 @@ class AnnonceController extends Controller
 
         $validated = $request->validate([
             'titre' => 'nullable|string|max:200',
-            'description' => 'nullable|string',
-            'prix_vendeur' => 'nullable|numeric|min:0',
+            'description' => 'nullable|string|max:5000',
+            'prix_vendeur' => 'nullable|numeric|min:1',
             'categorie' => 'nullable|string|max:100',
-            'etat' => 'nullable|string',
-            'quantite' => 'nullable|integer|min:1',
+            'etat' => 'nullable|in:neuf,tres_bon,bon,acceptable,occasion,reconditionne',
+            'quantite' => 'nullable|integer|min:1|max:10000',
             'pays_expedition' => 'nullable|string|max:50'
         ]);
 
@@ -148,13 +157,20 @@ class AnnonceController extends Controller
     // Recherche
     public function search(Request $request)
     {
-        $q = $request->input('q');
+        $request->validate([
+            'q' => 'required|string|min:2|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'categorie' => 'nullable|string|max:100',
+            'etat' => 'nullable|in:neuf,tres_bon,bon,acceptable,occasion,reconditionne',
+            'sort' => 'nullable|in:prix_asc,prix_desc,recent',
+        ]);
+        $q = mb_strtolower($request->input('q'));
 
         $query = Annonce::where('statut', 'active')
             ->where(function($query) use ($q) {
-                $query->where('titre', 'ILIKE', "%{$q}%")
-                    ->orWhere('description', 'ILIKE', "%{$q}%")
-                    ->orWhere('categorie', 'ILIKE', "%{$q}%");
+                $query->whereRaw('LOWER(titre) LIKE ?', ["%{$q}%"])
+                    ->orWhereRaw('LOWER(description) LIKE ?', ["%{$q}%"])
+                    ->orWhereRaw('LOWER(categorie) LIKE ?', ["%{$q}%"]);
             })
             ->with('vendeur', 'images');
 
@@ -175,7 +191,7 @@ class AnnonceController extends Controller
             $query->latest('created_at');
         }
 
-        return response()->json($query->paginate(12));
+        return response()->json($query->paginate(min((int) $request->input('per_page', 12), 100)));
     }
 
     public function countsParCategorie(): JsonResponse

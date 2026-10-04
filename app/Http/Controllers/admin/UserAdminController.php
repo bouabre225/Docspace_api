@@ -24,6 +24,7 @@ class UserAdminController extends Controller
             return response()->json(['message' => 'Action non autorisée.'], 403);
         }
         $user->update(['statut' => 'suspendu']);
+        $user->tokens()->delete();
         return response()->json(['success' => true, 'message' => 'Utilisateur suspendu.']);
     }
 
@@ -44,7 +45,18 @@ class UserAdminController extends Controller
             return response()->json(['message' => 'Action non autorisée.'], 403);
         }
 
-        \DB::table('users')->where('id', $id)->delete();
+        $relations = $user->annonces()->count()
+            + $user->commandesAcheteur()->count()
+            + $user->commandesVendeur()->count();
+        if ($relations > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Suppression impossible : utilisateur lié à des annonces/commandes. Suspendez-le plutôt.',
+            ], 422);
+        }
+
+        $user->tokens()->delete();
+        $user->delete();
 
         return response()->json(['success' => true, 'message' => 'Utilisateur supprimé.']);
     }

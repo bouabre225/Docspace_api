@@ -24,7 +24,7 @@ class RegisterSellerRequest extends FormRequest
         return [
             'nom' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'mot_de_passe' => 'required|string|min:6',
+            'mot_de_passe' => 'required|string|min:10|confirmed',
             'telephone' => 'required|string|max:255',
             'adresse' => 'nullable|string|max:255',
             'pays' => 'nullable|string|max:255',

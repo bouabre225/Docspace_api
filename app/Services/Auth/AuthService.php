@@ -91,15 +91,17 @@ class AuthService
             throw new \RuntimeException('Compte suspendu', 423);
         }
 
-        // 2FA activé -> challenge
+        // 2FA activé -> challenge + envoi du code par mail
         if ($user->has2faEnabled()) {
             $challengeId = (string) Str::uuid();
 
             Cache::put(
                 "login_2fa_challenge:{$challengeId}",
-                ['user_id' => $user->id, 'device_name' => $deviceName],
+                ['user_id' => $user->id, 'device_name' => $deviceName, 'is_admin' => false],
                 now()->addMinutes(10)
             );
+
+            app(\App\Services\Auth\TwoFactorService::class)->sendOtpEmail($user);
 
             return [
                 'requires_2fa' => true,

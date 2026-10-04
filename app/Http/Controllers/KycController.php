@@ -30,7 +30,7 @@ class KycController
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'type_document' => 'required|in:cni,passport,permis',
+            'type_document' => 'required|in:cni,passeport,permis',
             'fichier' => 'required|file|extensions:pdf,jpeg,png,jpg,doc,docx|max:5120',
         ]);
 

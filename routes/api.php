@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\{Route, Broadcast, Schedule};
+use Illuminate\Support\Facades\{Route, Broadcast};
 use Illuminate\Http\Request;
 use App\Http\Controllers\{
     AnnonceController, AnnonceImageController, NotificationController,
@@ -17,7 +17,7 @@ use App\Http\Controllers\admin\{adminController, UserAdminController};
 |--------------------------------------------------------------------------
 */
 Route::get('/', fn() => response()->json(['status' => 200, 'message' => 'API Docspace is running']));
-Route::post('/contact', [ContactController::class, 'store']);
+Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:5,1');
 
 // Annonces (Consultation)
 Route::prefix('annonces')->group(function () {
@@ -28,24 +28,22 @@ Route::prefix('annonces')->group(function () {
 });
 
 // Authentification & Inscription
-Route::middleware('throttle:login')->group(function () {
-    Route::post('/register/acheteur', [AuthController::class, 'registerBuyer']);
-    Route::post('/register/vendeur', [AuthController::class, 'registerSeller']);
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/admin/login', [AuthController::class, 'loginAdmin']);
-    Route::post('/login/2fa', [AuthController::class, 'login2fa']);
-});
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/admin/login', [AuthController::class, 'loginAdmin'])->middleware('throttle:login');
+Route::post('/login/2fa', [AuthController::class, 'login2fa'])->middleware('throttle:5,1');
+Route::post('/register/acheteur', [AuthController::class, 'registerBuyer'])->middleware('throttle:10,1');
+Route::post('/register/vendeur', [AuthController::class, 'registerSeller'])->middleware('throttle:10,1');
 
 // Récupération de compte
-Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
-Route::post('/password/reset',  [AuthController::class, 'resetPassword']);
+Route::post('/password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/password/reset',  [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Google OAuth
 Route::get('/auth/google', [GoogleAuthController::class, 'redirect']);
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback']);
 
 // Webhooks (Paiements)
-Route::post('/webhooks/fedapay', [PaiementWebhookController::class, 'handleWebhook'])->name('fedapay.webhook');
+Route::post('/webhooks/fedapay', [PaiementWebhookController::class, 'handleWebhook'])->middleware('throttle:30,1')->name('fedapay.webhook');
 
 
 /*
@@ -59,12 +57,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('me')->group(function () {
         Route::get('/', [MeController::class, '__invoke']);
         Route::put('/', [MeController::class, 'update']);
-        Route::post('/fcm-token', fn(Request $r) => $r->user()->update(['fcm_token' => $r->fcm_token]));
+        Route::post('/fcm-token', function (Request $r) {
+            $r->validate(['fcm_token' => 'required|string|max:255']);
+            $r->user()->update(['fcm_token' => $r->fcm_token]);
+            return response()->json(['success' => true]);
+        });
     });
     
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::prefix('2fa')->group(function () {
+    Route::prefix('2fa')->middleware('throttle:10,1')->group(function () {
         Route::post('/enable', [TwoFactorController::class, 'enable']);
         Route::post('/verify', [TwoFactorController::class, 'verify']);
         Route::post('/disable', [TwoFactorController::class, 'disable']);
@@ -79,7 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [NotificationController::class, 'destroy']);
     });
 
-    Route::prefix('messages')->group(function () {
+    Route::prefix('messages')->middleware('throttle:30,1')->group(function () {
         Route::get('/', [MessageController::class, 'index']);
         Route::post('/', [MessageController::class, 'store']);
         Route::get('/{userId}', [MessageController::class, 'show']);
@@ -104,16 +106,17 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* --- ESPACE VENDEUR --- */
-    Route::middleware('role:vendeur')->group(function () {
+    Route::middleware(['role:vendeur'])->group(function () {
         Route::prefix('annonces')->group(function () {
-            Route::post('/', [AnnonceController::class, 'store']);
+            Route::post('/', [AnnonceController::class, 'store'])->middleware('kyc');
             Route::put('/{annonce}', [AnnonceController::class, 'update']);
             Route::delete('/{annonce}', [AnnonceController::class, 'destroy']);
             Route::post('/{annonce}/images', [AnnonceImageController::class, 'store']);
+            Route::post('/{annonce}/images/reorder', [AnnonceImageController::class, 'reorder']);
         });
         Route::delete('/annonces/images/{image}', [AnnonceImageController::class, 'destroy']);
 
-        Route::prefix('kyc')->group(function () {
+        Route::prefix('kyc')->middleware('throttle:10,1')->group(function () {
             Route::post('/submit', [KycController::class, 'submit']);
             Route::get('/status', [KycController::class, 'status']);
         });
@@ -138,7 +141,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/documents/{document}/validate', [adminController::class, 'validateKyc']);
             Route::get('/document/{id}', function ($id) {
                 $doc = \App\Models\KycDocument::findOrFail($id);
-                return response()->file(storage_path('app/private/'.$doc->fichier));
+                if (!\Illuminate\Support\Facades\Storage::disk('private')->exists($doc->fichier)) {
+                    return response()->json(['message' => 'Fichier introuvable'], 404);
+                }
+                return \Illuminate\Support\Facades\Storage::disk('private')->download($doc->fichier);
             });
         });
 
@@ -155,25 +161,3 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/broadcasting/auth', fn(Request $r) => Broadcast::auth($r));
 });
-
-/*
-|--------------------------------------------------------------------------
-| 3. TÂCHES PLANIFIÉES (CRON JOBS)
-|--------------------------------------------------------------------------
-*/
-// Retry des notifications échouées
-Schedule::command('notifications:retry-failed')
-    ->everyTenMinutes()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/scheduler.log'));
-
-// Nettoyage des jobs en échec (> 30 jours)
-Schedule::command('queue:flush')->monthly();
-
-// Nettoyage des notifications lues (> 90 jours)
-Schedule::call(function () {
-    \App\Models\Notification::where('lu', true)
-        ->where('created_at', '<', now()->subDays(90))
-        ->delete();
-})->weekly()->name('clean-old-notifications')->withoutOverlapping();

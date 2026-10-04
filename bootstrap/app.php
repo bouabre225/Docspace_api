@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn() => null);
     
         $middleware->api([
-            //\App\Http\Middleware\ForceJsonResponse::class,
+            \App\Http\Middleware\ForceJsonResponse::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             'throttle:api',
             \Illuminate\Http\Middleware\HandleCors::class,

@@ -19,7 +19,7 @@ class LitigeService
                 'acheteur_id'     => $acheteurId,
                 'motif'           => $motif,
                 'preuves'         => $preuves,
-                'statut'          => 'en_attente',
+                'statut'          => 'ouvert',
                 'date_signalement'=> now(),
             ]);
 
@@ -45,6 +45,9 @@ class LitigeService
             $litige->update(['statut' => 'resolu']);
 
             $commande = $litige->commande;
+            if (!$commande) {
+                return $litige->fresh();
+            }
 
             if ($decision === 'rembourse') {
                 // Rembourser l'acheteur → paiement marqué remboursé
@@ -52,7 +55,7 @@ class LitigeService
                 $commande->update(['statut' => 'annulee']);
 
                 // Restituer le stock
-                $commande->annonce->increment('quantite', $commande->quantite);
+                $commande->annonce?->increment('quantite', $commande->quantite);
             } else {
                 // Rejeter le litige → libérer le paiement au vendeur
                 $commande->paiement?->update(['statut' => 'libere']);

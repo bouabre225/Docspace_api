@@ -26,11 +26,27 @@ class TwoFactorService
     }
 
     // Garde ces méthodes pour ne pas casser le reste du code existant
-    public function generatePendingSecret(User $user): array { return []; }
-    public function confirmEnable(User $user, string $code): void {}
+    public function generatePendingSecret(User $user): array
+    {
+        $this->sendOtpEmail($user);
+        return ['secret' => null, 'otpauth_url' => null, 'mode' => 'email-otp'];
+    }
+    public function confirmEnable(User $user, string $code): void
+    {
+        if (!$this->verifyOtp($user, $code)) {
+            throw new \Exception('Code 2FA invalide');
+        }
+        $user->forceFill(['two_factor_secret' => 'email-otp'])->save();
+    }
     public function verifyActiveSecret(User $user, string $code): bool
     {
         return $this->verifyOtp($user, $code);
     }
-    public function disable(User $user, string $code): void {}
+    public function disable(User $user, string $code): void
+    {
+        if (!$this->verifyOtp($user, $code)) {
+            throw new \Exception('Code 2FA invalide');
+        }
+        $user->forceFill(['two_factor_secret' => null, 'two_factor_enable_at' => null])->save();
+    }
 }

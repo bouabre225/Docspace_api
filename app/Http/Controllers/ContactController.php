@@ -24,7 +24,7 @@ class ContactController extends Controller
         $data['contenu'] = $data['message'];  // renomme pour éviter le conflit avec $message de Laravel
         unset($data['message']);
 
-        Mail::send('emails.contact', $data, function ($mail) use ($validated, $sujet) {
+        Mail::queue('emails.contact', $data, function ($mail) use ($validated, $sujet) {
             $mail->to(config('mail.from.address'))
                  ->subject($sujet)
                  ->replyTo($validated['email'], $validated['nom']);

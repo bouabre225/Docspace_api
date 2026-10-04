@@ -24,9 +24,9 @@ class TwoFactorController extends Controller
         $payload = $service->generatePendingSecret($user);
 
         return response()->json([
-            'message' => '2FA en attente de confirmation',
-            'secret' => $payload['secret'],
-            'otpauth_url' => $payload['otpauth_url'],
+            'message' => 'Code 2FA envoyé par email. Confirme avec POST /2fa/verify {code}.',
+            'secret' => $payload['secret'] ?? null,
+            'otpauth_url' => $payload['otpauth_url'] ?? null,
         ], 200);
     }
 
@@ -71,12 +71,12 @@ class TwoFactorController extends Controller
     {
         $user = $rawRequest->user();
 
-        if ($user->tokenCan('2fa-bootstrap') && $user->role == 'admin') {
-            return response()->json(['message' => 'Action interdite avec un token bootstrap.'], 403);
-        }
-
         if (!$user) {
             return response()->json(['message' => 'Non authentifié.'], 401);
+        }
+
+        if ($user->tokenCan('2fa-bootstrap') && $user->role == 'admin') {
+            return response()->json(['message' => 'Action interdite avec un token bootstrap.'], 403);
         }
 
         try {

@@ -17,23 +17,11 @@ class MessageController extends Controller
     {
         $userId = (string) Auth::id();
 
-     $conversations = DB::select("
-        SELECT
-            u.id::text,
-            u.nom as name,
-            u.email,
-            u.avatar,
-            MAX(COALESCE(m.created_at, '1970-01-01')) as dernier_message,
-            SUM(CASE WHEN m.lu = false AND m.recepteur_id::text = ? THEN 1 ELSE 0 END) as non_lus
-        FROM messages m
-        JOIN users u ON u.id::text = CASE
-            WHEN m.expediteur_id::text = ? THEN m.recepteur_id::text
-            ELSE m.expediteur_id::text
-        END
-        WHERE m.expediteur_id::text = ? OR m.recepteur_id::text = ?
-        GROUP BY u.id, u.nom, u.email, u.avatar
-        ORDER BY dernier_message DESC
-    ", [$userId, $userId, $userId, $userId]);
+        $conversations = Message::with(['expediteur:id,nom,email,avatar', 'recepteur:id,nom,email,avatar'])
+            ->where('expediteur_id', $userId)
+            ->orWhere('recepteur_id', $userId)
+            ->latest()
+            ->paginate(20);
 
         return response()->json($conversations);
     }
@@ -67,31 +55,26 @@ class MessageController extends Controller
     // Envoyer un message
     public function store(Request $request): JsonResponse
     {
-        Log::info('[MESSAGE] Receiving message request', ['user_id' => Auth::id()]);
-        
         $validated = $request->validate([
             'recepteur_id' => 'required|exists:users,id',
             'annonce_id'   => 'nullable|exists:annonces,id',
             'contenu'      => 'required|string|max:1000',
         ]);
 
-        Log::info('[MESSAGE] Validation passed', $validated);
+        if ((string) $validated['recepteur_id'] === (string) Auth::id()) {
+            return response()->json(['message' => 'Impossible de s\'envoyer un message à soi-même.'], 422);
+        }
 
         $message = Message::create([
             'expediteur_id' => (string) Auth::id(),
             'recepteur_id'  => (string) $validated['recepteur_id'],
             'annonce_id'    => $validated['annonce_id'] ?? null,
             'contenu'       => $validated['contenu'],
-            'created_at'    => now(),
         ]);
 
         Log::info('[MESSAGE] Message created', [
             'message_id' => $message->id,
-            'recepteur_id' => $message->recepteur_id,
         ]);
-
-        // Notifie le destinataire via push (temps réel)
-        Log::info('[MESSAGE] Dispatching MessageReceived event');
         event(new MessageReceived($message->load('recepteur')));
 
         return response()->json([

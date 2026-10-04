@@ -54,19 +54,24 @@ class PaiementWebhookController extends Controller
                 ],
             ], 201);
         } catch (\Exception $e) {
-            // ← temporaire pour debug
+            Log::error('Création paiement échouée', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'message' => 'Impossible d\'initier le paiement. Réessaie plus tard.',
             ], 500);
         }
     }
 
    public function handleWebhook(Request $request)
     {
-        // Pas de vérification signature — sécurisé par HTTPS + secret dans l'URL optionnel
+        $expectedSecret = config('services.fedapay.webhook_secret');
+        if (!empty($expectedSecret)) {
+            $provided = $request->header('X-FedaPay-Signature') ?? $request->input('webhook_secret');
+            if (!hash_equals((string) $expectedSecret, (string) $provided)) {
+                Log::warning('FedaPay webhook signature invalide');
+                return response()->json(['success' => false, 'message' => 'Signature invalide'], 403);
+            }
+        }
         Log::info('FedaPay webhook received', ['event' => $request->input('event')]);
 
         try {
@@ -97,10 +102,18 @@ class PaiementWebhookController extends Controller
             return response()->json(['statut' => $commande->statut]);
         }
 
+        if (in_array($commande->statut, ['payee', 'livree', 'cloturee', 'annulee', 'litige'])) {
+            return response()->json(['statut' => $commande->statut]);
+        }
+
         try {
             $transaction = Transaction::retrieve($commande->paiement->provider_reference);
 
-            if ($transaction->status === 'approved') {
+            if (($transaction->status ?? null) === 'approved') {
+                if ((int) ($transaction->amount ?? 0) !== (int) $commande->montant) {
+                    Log::warning('Verify montant incohérent', ['commande_id' => $commande->id]);
+                    return response()->json(['statut' => $commande->statut], 422);
+                }
                 $commande->paiement->update([
                     'statut'        => 'bloque',
                     'date_paiement' => now(),
@@ -110,14 +123,18 @@ class PaiementWebhookController extends Controller
 
                 event(new CommandeStatusChanged($commande, 'payee'));
 
-                \Mail::to($commande->acheteur->email)
-                    ->queue(new \App\Mail\FactureMail($commande));
+                try {
+                    \Mail::to($commande->acheteur->email)
+                        ->queue(new \App\Mail\FactureMail($commande));
+                } catch (\Exception $e) {
+                    Log::error('Envoi facture verify échoué', ['error' => $e->getMessage()]);
+                }
             }
 
             return response()->json(['statut' => $commande->fresh()->statut]);
 
         } catch (\Exception $e) {
-            //\Log::error('Verify payment error', ['error' => $e->getMessage()]);
+            Log::error('Verify payment error', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
             return response()->json(['statut' => $commande->statut]);
         }
     }

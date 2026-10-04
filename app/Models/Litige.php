@@ -11,6 +11,7 @@ class Litige extends Model
 
     public $timestamps = true;        // ← la table n'a pas updated_at
     const CREATED_AT = 'date_signalement'; // ← created_at s'appelle date_signalement
+    const UPDATED_AT = null;
 
     protected $fillable = [
         'commande_id',

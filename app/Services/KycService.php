@@ -16,7 +16,7 @@ class KycService
             
             return KycDocument::create([
                 'user_id' => $user->id,
-                'type_documents' => $data['type_document'],
+                'type_document' => $data['type_document'],
                 'fichier' => $path,
                 'statut' => 'en_attente',
             ]);
@@ -27,7 +27,8 @@ class KycService
         KycDocument $document,
         User $admin,
         string $decision,
-        string $ip_address
+        string $ip_address,
+        ?string $commentaire = null
     ) {
         if (!in_array($decision, ['valide', 'refuse'])) {
             throw new \InvalidArgumentException('Décision invalide');
@@ -51,7 +52,7 @@ class KycService
                 'document_id' => $document->id,
                 'ancien_statut' => $ancienStatut,
                 'nouveau_statut' => $decision,
-                'commentaire' => null,
+                'commentaire' => $commentaire,
                 'ip_address' => $ip_address,
             ]);
 

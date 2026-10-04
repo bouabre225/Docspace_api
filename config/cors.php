@@ -19,9 +19,13 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        // PROD (exemples)
+        // PROD
         'https://docspace.bj',
         'https://www.docspace.bj',
+        // Staging + dev local
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://127.0.0.1:5173',
     ],
 
     'allowed_origins_patterns' => [],
@@ -32,7 +36,7 @@ return [
         // optionnel
     ],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
     /*
      * Token-based (Bearer): false (recommandé).

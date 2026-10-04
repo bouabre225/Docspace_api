@@ -10,11 +10,12 @@ class Avis extends Model
 {
     use HasFactory, HasUuid;
 
-    protected $keyType = 'int';
-    public $incrementing = true;
+    protected $keyType = 'string';
+    public $incrementing = false;
 
-    public $timestamps = false;
+    public $timestamps = true;
     const CREATED_AT = 'created_at';
+    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         'commande_id', 'vendeur_id', 'note_vendeur', 'note_conformite', 'commentaire'
@@ -22,7 +23,7 @@ class Avis extends Model
 
     public function commande()
     {
-        return $this->belongsTo(Commandes::class, 'commande_id');
+        return $this->belongsTo(Commande::class, 'commande_id');
     }
 
     public function vendeur()
