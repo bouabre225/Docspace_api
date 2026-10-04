@@ -43,7 +43,11 @@ class KycService
             ]);
 
             if ($decision === 'valide') {
-                $document->user->update(['verifie_kyc' => true]);
+                $docUser = $document->user;
+                if ($docUser) {
+                    $docUser->verifie_kyc = true;
+                    $docUser->save();
+                }
             }
 
             KycAudit::create([

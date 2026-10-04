@@ -23,7 +23,8 @@ class UserAdminController extends Controller
         if ($user->role === 'admin') {
             return response()->json(['message' => 'Action non autorisée.'], 403);
         }
-        $user->update(['statut' => 'suspendu']);
+        $user->statut = 'suspendu';
+        $user->save();
         $user->tokens()->delete();
         return response()->json(['success' => true, 'message' => 'Utilisateur suspendu.']);
     }
@@ -34,7 +35,8 @@ class UserAdminController extends Controller
         if ($user->role === 'admin') {
             return response()->json(['message' => 'Action non autorisée.'], 403);
         }
-        $user->update(['statut' => 'actif']);
+        $user->statut = 'actif';
+        $user->save();
         return response()->json(['success' => true, 'message' => 'Utilisateur réactivé.']);
     }
 
