@@ -24,3 +24,4 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 PAIEMENT_CURLS.md
+.env.testing
