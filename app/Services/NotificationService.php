@@ -105,8 +105,10 @@ class NotificationService
 
     public function notifierMessage(User $destinataire, \App\Models\Message $message): void
     {
+        // Push + email : le push seul n'arrive jamais (pas de FCM côté front),
+        // l'email garantit que le destinataire est prévenu.
         $this->envoyer($destinataire, 'message', "Vous avez reçu un nouveau message.", [
-            'canaux'         => ['push'],
+            'canaux'         => ['push', 'email'],
             'reference_type' => 'message',
             'reference_id'   => $message->id,
             'metadata'       => ['expediteur_id' => $message->expediteur_id],
