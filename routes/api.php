@@ -92,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [CommandeController::class, 'index']);
         Route::post('/', [CommandeController::class, 'store']);
         Route::get('/recues', [CommandeController::class, 'recues']);
+        Route::get('/stats-vendeur', [CommandeController::class, 'statsVendeur']);
         Route::get('/{commande}', [CommandeController::class, 'show']);
         Route::patch('/{commande}/livrer', [CommandeController::class, 'marquerLivree']);
         Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);

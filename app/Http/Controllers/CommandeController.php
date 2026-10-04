@@ -161,6 +161,68 @@ class CommandeController extends Controller
         return response()->json(['success' => true, 'data' => $commandes]);
     }
 
+    public function statsVendeur(Request $request): JsonResponse
+    {
+        $vendeurId = $request->user()->id;
+        $request->validate(['periode' => 'nullable|in:7j,30j,90j,365j,tout']);
+        $jours = match ($request->input('periode', '30j')) {
+            '7j' => 7, '90j' => 90, '365j' => 365, 'tout' => null, default => 30,
+        };
+        $debut = $jours ? \Carbon\Carbon::now()->subDays($jours)->startOfDay() : null;
+        $payes = ['payee', 'livree', 'cloturee'];
+
+        $base = \App\Models\Commande::where('vendeur_id', $vendeurId)
+            ->when($debut, fn($q) => $q->where('created_at', '>=', $debut));
+        $payeesQ = (clone $base)->whereIn('statut', $payes);
+        $ca = (float) (clone $payeesQ)->sum('montant');
+        $nbPayees = (clone $payeesQ)->count();
+
+        $parStatut = (clone $base)->selectRaw('statut, count(*) as total')->groupBy('statut')->get();
+        $serie = (clone $base)
+            ->selectRaw("created_at::date as date, count(*) as commandes, coalesce(sum(case when statut in ('payee','livree','cloturee') then montant else 0 end),0) as ca")
+            ->groupByRaw('created_at::date')->orderBy('date')->get();
+
+        $parAnnonce = \App\Models\Commande::where('commandes.vendeur_id', $vendeurId)
+            ->join('annonces as a', 'a.id', '=', 'commandes.annonce_id')
+            ->selectRaw("a.id, a.titre, a.quantite as stock, a.statut as annonce_statut, count(*) as commandes, coalesce(sum(case when commandes.statut in ('payee','livree','cloturee') then commandes.montant else 0 end),0) as ca")
+            ->when($debut, fn($q) => $q->where('commandes.created_at', '>=', $debut))
+            ->groupBy('a.id', 'a.titre', 'a.quantite', 'a.statut')
+            ->orderByDesc('ca')->get();
+
+        $annonces = \App\Models\Annonce::where('vendeur_id', $vendeurId);
+        $recurrents = (clone $base)->selectRaw('acheteur_id, count(*) as commandes, coalesce(sum(case when statut in (\'payee\',\'livree\',\'cloturee\') then montant else 0 end),0) as total')
+            ->groupBy('acheteur_id')->havingRaw('count(*) >= 2')->orderByDesc('total')->limit(10)->get()
+            ->loadMissing('acheteur:id,nom,email');
+
+        $litiges = \App\Models\Litige::whereHas('commande', fn($q) => $q->where('vendeur_id', $vendeurId))
+            ->when($debut, fn($q) => $q->where('date_signalement', '>=', $debut))
+            ->with('commande:id')->latest('date_signalement')->limit(10)->get();
+        $avis = \App\Models\Avis::where('vendeur_id', $vendeurId)->with('commande:id')->latest()->limit(10)->get();
+        $noteMoy = \App\Models\Avis::where('vendeur_id', $vendeurId)->selectRaw('round(avg((note_vendeur+note_conformite)/2.0),2) as note, count(*) as total')->first();
+
+        return response()->json([
+            'periode' => $request->input('periode', '30j'),
+            'kpis' => [
+                'ca' => round($ca, 2),
+                'net' => round($ca / 1.08, 2),
+                'commandes' => (clone $base)->count(),
+                'commandes_payees' => $nbPayees,
+                'a_expedier' => (clone $base)->where('statut', 'payee')->count(),
+                'annonces_actives' => (clone $annonces)->where('statut', 'active')->count(),
+                'ruptures' => (clone $annonces)->where('quantite', '<=', 0)->count(),
+                'stock_bas' => (clone $annonces)->where('statut', 'active')->where('quantite', '>', 0)->where('quantite', '<=', 2)->count(),
+                'note_moyenne' => (float) ($noteMoy->note ?? 0),
+                'avis_total' => (int) ($noteMoy->total ?? 0),
+            ],
+            'par_statut' => $parStatut,
+            'serie' => $serie,
+            'par_annonce' => $parAnnonce,
+            'recurrents' => $recurrents,
+            'litiges' => $litiges,
+            'avis' => $avis,
+        ]);
+    }
+
     public function marquerLivree(Request $request, Commande $commande): JsonResponse
     {
         $user = $request->user();
