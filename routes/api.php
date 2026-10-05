@@ -7,7 +7,7 @@ use App\Http\Controllers\{
     MessageController, CommandeController, KycController,
     PaiementWebhookController, AuthController, GoogleAuthController,
     MeController, TwoFactorController, LitigeController, ContactController,
-    AdminKycController, AvisController, FavoriController
+    AdminKycController, AvisController, FavoriController, VisiteController
 };
 use App\Http\Controllers\admin\{adminController, UserAdminController, StatsController};
 
@@ -18,6 +18,7 @@ use App\Http\Controllers\admin\{adminController, UserAdminController, StatsContr
 */
 Route::get('/', fn() => response()->json(['status' => 200, 'message' => 'API Docspace is running']));
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:5,1');
+Route::post('/visites', [VisiteController::class, 'store'])->middleware('throttle:60,1');
 
 // Annonces (Consultation)
 Route::prefix('annonces')->group(function () {

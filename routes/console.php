@@ -28,3 +28,8 @@ Schedule::call(function () {
 
 // Digest quotidien admin (08h00)
 Schedule::command('admin:digest')->dailyAt('08:00')->withoutOverlapping();
+
+// Purge visites > 13 mois (vie privée)
+Schedule::call(function () {
+    \App\Models\Visite::where('created_at', '<', now()->subMonths(13))->delete();
+})->monthly()->name('purge-old-visites')->withoutOverlapping();

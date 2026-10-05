@@ -164,6 +164,23 @@ class StatsController extends Controller
             ->when($debut, fn($q) => $q->where('created_at', '>=', $debut))->count();
         $paiementsTotal = DB::table('paiements')->when($debut, fn($q) => $q->where('created_at', '>=', $debut))->count();
 
+        // Audience : visiteurs uniques/jour + top vues + tunnel
+        $audienceSerie = DB::table('visites')
+            ->selectRaw('created_at::date as date, count(distinct visitor_id) as visiteurs, count(*) as vues')
+            ->when($debut, fn($q) => $q->where('created_at', '>=', $debut))
+            ->groupByRaw('created_at::date')->orderBy('date')->get();
+        $visiteursUniques = DB::table('visites')
+            ->when($debut, fn($q) => $q->where('created_at', '>=', $debut))
+            ->distinct('visitor_id')->count('visitor_id');
+        $vuesTotal = DB::table('visites')
+            ->when($debut, fn($q) => $q->where('created_at', '>=', $debut))
+            ->whereNotNull('annonce_id')->count();
+        $topVues = DB::table('visites')
+            ->join('annonces as a', 'a.id', '=', 'visites.annonce_id')
+            ->selectRaw('a.id, a.titre, count(distinct visites.visitor_id) as visiteurs, count(*) as vues')
+            ->when($debut, fn($q) => $q->where('visites.created_at', '>=', $debut))
+            ->groupBy('a.id', 'a.titre')->orderByDesc('vues')->limit(10)->get();
+
         return response()->json([
             'periode' => $request->input('periode', '30j'),
             'kpis' => [
@@ -210,6 +227,13 @@ class StatsController extends Controller
                 'delai_moyen_heures' => $delaiPaiement ? round($delaiPaiement, 1) : null,
                 'echoues' => $paiementsEchoues,
                 'total' => $paiementsTotal,
+            ],
+            'audience' => [
+                'visiteurs_uniques' => $visiteursUniques,
+                'vues_total' => $vuesTotal,
+                'taux_vue_commande' => $vuesTotal ? round($commandesTotal / $vuesTotal * 100, 2) : 0,
+                'serie' => $audienceSerie,
+                'top_vues' => $topVues,
             ],
         ]);
     }
