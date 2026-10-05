@@ -177,9 +177,14 @@ class StatsController extends Controller
             ->whereNotNull('annonce_id')->count();
         $topVues = DB::table('visites')
             ->join('annonces as a', 'a.id', '=', 'visites.annonce_id')
-            ->selectRaw('a.id, a.titre, count(distinct visites.visitor_id) as visiteurs, count(*) as vues')
+            ->selectRaw('a.id, a.titre, a.categorie, count(distinct visites.visitor_id) as visiteurs, count(*) as vues')
             ->when($debut, fn($q) => $q->where('visites.created_at', '>=', $debut))
-            ->groupBy('a.id', 'a.titre')->orderByDesc('vues')->limit(10)->get();
+            ->groupBy('a.id', 'a.titre', 'a.categorie')->orderByDesc('vues')->limit(10)->get();
+        $vuesParCategorie = DB::table('visites')
+            ->join('annonces as a', 'a.id', '=', 'visites.annonce_id')
+            ->selectRaw('a.categorie, count(distinct visites.visitor_id) as visiteurs, count(*) as vues')
+            ->when($debut, fn($q) => $q->where('visites.created_at', '>=', $debut))
+            ->groupBy('a.categorie')->orderByDesc('vues')->get();
 
         return response()->json([
             'periode' => $request->input('periode', '30j'),
@@ -234,6 +239,7 @@ class StatsController extends Controller
                 'taux_vue_commande' => $vuesTotal ? round($commandesTotal / $vuesTotal * 100, 2) : 0,
                 'serie' => $audienceSerie,
                 'top_vues' => $topVues,
+                'vues_par_categorie' => $vuesParCategorie,
             ],
         ]);
     }
