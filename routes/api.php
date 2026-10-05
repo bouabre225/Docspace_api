@@ -29,6 +29,9 @@ Route::prefix('annonces')->group(function () {
     Route::get('/{annonce}', [AnnonceController::class, 'show']);
 });
 
+// Stats publiques (totaux, cache 5 min)
+Route::get('/stats-public', [\App\Http\Controllers\admin\StatsController::class, 'public']);
+
 // Authentification & Inscription
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/admin/login', [AuthController::class, 'loginAdmin'])->middleware('throttle:login');

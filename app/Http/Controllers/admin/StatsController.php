@@ -11,10 +11,26 @@ class StatsController extends Controller
 {
     private const PAYES = ['payee', 'livree', 'cloturee'];
 
+    /**
+     * Stats publiques légères pour la home (cachées 5 min).
+     * Aucune donnée sensible : totaux uniquement.
+     */
+    public function public()
+    {
+        return \Illuminate\Support\Facades\Cache::remember('stats:public', 300, function () {
+            return response()->json([
+                'annonces' => \DB::table('annonces')->where('statut', 'active')->count(),
+                'vendeurs' => \DB::table('annonces')->where('statut', 'active')->distinct('vendeur_id')->count('vendeur_id'),
+                'pays' => \DB::table('annonces')->where('statut', 'active')->whereNotNull('pays_expedition')->distinct('pays_expedition')->count('pays_expedition'),
+                'note_moyenne' => round((float) \DB::table('avis')->selectRaw('coalesce(avg((note_vendeur + note_conformite) / 2.0), 0) as note')->value('note'), 1),
+                'avis_total' => \DB::table('avis')->count(),
+            ]);
+        });
+    }
+
     public function index(Request $request)
     {
-        $request->validate([
-            'periode' => 'nullable|in:7j,30j,90j,365j,tout',
+        $request->validate([            'periode' => 'nullable|in:7j,30j,90j,365j,tout',
             'categorie' => 'nullable|string|max:100',
             'pays' => 'nullable|string|max:50',
         ]);
