@@ -104,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{commande}/cancel', [CommandeController::class, 'cancel']);
         Route::post('/{commande}/pay', [PaiementWebhookController::class, 'pay']);
         Route::post('/{commande}/verify', [PaiementWebhookController::class, 'verify']);
+        Route::post('/{commande}/facture', [PaiementWebhookController::class, 'renvoyerFacture'])->middleware('throttle:5,1');
     });
 
     Route::prefix('litiges')->group(function () {

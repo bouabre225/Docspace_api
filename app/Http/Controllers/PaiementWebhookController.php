@@ -28,6 +28,10 @@ class PaiementWebhookController extends Controller
             return response()->json(['success' => false, 'message' => 'Cette commande ne peut pas être payée'], 400);
         }
 
+        if ((int) $commande->montant < 100) {
+            return response()->json(['success' => false, 'message' => 'Montant minimum 100 FCFA pour le paiement en ligne (FedaPay).'], 422);
+        }
+
         // Si un paiement en_attente existe depuis + d'1 min, le supprimer pour permettre un nouveau
         if ($commande->paiement && $commande->paiement->statut === 'en_attente') {
             if ($commande->paiement->created_at->diffInMinutes(now()) >= 1) {
@@ -54,19 +58,30 @@ class PaiementWebhookController extends Controller
                 ],
             ], 201);
         } catch (\Exception $e) {
-            // ← temporaire pour debug
+            Log::error('Création paiement échouée', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
+                'message' => 'Impossible d\'initier le paiement. Réessaie plus tard.',
             ], 500);
         }
     }
 
    public function handleWebhook(Request $request)
     {
-        // Pas de vérification signature — sécurisé par HTTPS + secret dans l'URL optionnel
+        $secret = config('services.fedapay.webhook_secret');
+        if (empty($secret)) {
+            Log::warning('FedaPay webhook: secret non configuré, vérification ignorée');
+        } else {
+            $signature = $request->header('X-FedaPay-Signature');
+            if (empty($signature)) {
+                return response()->json(['success' => false, 'message' => 'Signature manquante'], 401);
+            }
+            $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $secret);
+            if (!hash_equals($expected, (string) $signature)) {
+                Log::warning('FedaPay webhook signature invalide');
+                return response()->json(['success' => false, 'message' => 'Signature invalide'], 401);
+            }
+        }
         Log::info('FedaPay webhook received', ['event' => $request->input('event')]);
 
         try {
@@ -88,8 +103,7 @@ class PaiementWebhookController extends Controller
     }
 
     public function verify(Commande $commande)
-    {
-        if ($commande->acheteur_id !== auth()->id()) {
+    {        if ($commande->acheteur_id !== auth()->id()) {
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
@@ -97,10 +111,18 @@ class PaiementWebhookController extends Controller
             return response()->json(['statut' => $commande->statut]);
         }
 
+        if (in_array($commande->statut, ['payee', 'livree', 'cloturee', 'annulee', 'litige'])) {
+            return response()->json(['statut' => $commande->statut]);
+        }
+
         try {
             $transaction = Transaction::retrieve($commande->paiement->provider_reference);
 
-            if ($transaction->status === 'approved') {
+            if (($transaction->status ?? null) === 'approved') {
+                if ((int) ($transaction->amount ?? 0) !== (int) $commande->montant) {
+                    Log::warning('Verify montant incohérent', ['commande_id' => $commande->id]);
+                    return response()->json(['statut' => $commande->statut], 422);
+                }
                 $commande->paiement->update([
                     'statut'        => 'bloque',
                     'date_paiement' => now(),
@@ -110,15 +132,50 @@ class PaiementWebhookController extends Controller
 
                 event(new CommandeStatusChanged($commande, 'payee'));
 
-                \Mail::to($commande->acheteur->email)
-                    ->queue(new \App\Mail\FactureMail($commande));
+                try {
+                    \Mail::to($commande->acheteur->email)
+                        ->queue(new \App\Mail\FactureMail($commande));
+                } catch (\Exception $e) {
+                    Log::error('Envoi facture verify échoué', ['error' => $e->getMessage()]);
+                }
             }
 
             return response()->json(['statut' => $commande->fresh()->statut]);
 
         } catch (\Exception $e) {
-            //\Log::error('Verify payment error', ['error' => $e->getMessage()]);
+            Log::error('Verify payment error', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
             return response()->json(['statut' => $commande->statut]);
         }
+    }
+
+    /**
+     * Renvoie la facture par email (acheteur de la commande ou admin).
+     * Utile si le mail initial est parti en spam / jamais reçu.
+     */
+    public function renvoyerFacture(Commande $commande)
+    {
+        $user = auth()->user();
+        $isAcheteur = $commande->acheteur_id === $user->id;
+        $isAdmin = $user->role === 'admin';
+
+        if (!$isAcheteur && !$isAdmin) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
+        if (!in_array($commande->statut, ['payee', 'livree', 'cloturee'])) {
+            return response()->json(['message' => 'Facture disponible uniquement après paiement.'], 422);
+        }
+
+        $commande->loadMissing(['acheteur', 'vendeur', 'annonce']);
+
+        try {
+            \Mail::to($commande->acheteur->email)
+                ->queue(new \App\Mail\FactureMail($commande));
+        } catch (\Exception $e) {
+            Log::error('Renvoi facture échoué', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
+            return response()->json(['message' => 'Envoi impossible pour le moment.'], 500);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Facture envoyée à ' . $commande->acheteur->email]);
     }
 }
