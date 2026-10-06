@@ -72,27 +72,52 @@ class PaiementWebhookController extends Controller
         if (empty($secret)) {
             Log::warning('FedaPay webhook: secret non configuré, vérification ignorée');
         } else {
-            $signature = $request->header('X-FedaPay-Signature');
-            if (empty($signature)) {
+            $sigHeader = $request->header('X-FedaPay-Signature') ?? $request->header('X-Fedapay-Signature');
+            $rawBody = $request->getContent();
+            if (empty($sigHeader)) {
                 return response()->json(['success' => false, 'message' => 'Signature manquante'], 401);
             }
-            $expected = 'sha256=' . hash_hmac('sha256', $request->getContent(), $secret);
-            if (!hash_equals($expected, (string) $signature)) {
-                Log::warning('FedaPay webhook signature invalide');
+            try {
+                // Format officiel FedaPay : header "t=timestamp,s=hmac(timestamp.payload)"
+                \FedaPay\Webhook::constructEvent($rawBody, $sigHeader, $secret);
+            } catch (\Exception $e) {
+                Log::warning('FedaPay webhook signature invalide', ['error' => $e->getMessage()]);
                 return response()->json(['success' => false, 'message' => 'Signature invalide'], 401);
             }
         }
-        Log::info('FedaPay webhook received', ['event' => $request->input('event')]);
-
         try {
-            $event         = $request->input('event');
-            $transactionId = $request->input('transaction.id');
+            $data = json_decode($rawBody, true) ?? [];
+            // Deux formats supportés : officiel (type/entity/object_id)
+            // et legacy (event/transaction.id)
+            $event = $data['event'] ?? $data['type'] ?? $data['name'] ?? null;
+            $transactionId = $data['transaction']['id']
+                ?? (($data['entity'] ?? null) === 'transaction' ? ($data['object_id'] ?? null) : null);
+
+            // Si l'event référence une transaction sans statut explicite,
+            // on récupère son statut réel via l'API (anti-forge + contrôle montant)
+            if ($transactionId && empty($data['event']) && ($data['entity'] ?? null) === 'transaction') {
+                try {
+                    $trx = \FedaPay\Transaction::retrieve((string) $transactionId);
+                    $status = $trx->status ?? null;
+                    $event = match ($status) {
+                        'approved' => 'transaction.approved',
+                        'canceled' => 'transaction.canceled',
+                        'failed' => 'transaction.failed',
+                        default => null,
+                    };
+                } catch (\Exception $e) {
+                    Log::error('Webhook: transaction introuvable côté FedaPay', ['id' => $transactionId]);
+                    return response()->json(['success' => false, 'message' => 'Transaction inconnue'], 400);
+                }
+            }
+
+            Log::info('FedaPay webhook received', ['event' => $event]);
 
             if (empty($event) || empty($transactionId)) {
                 return response()->json(['success' => false, 'message' => 'Payload incomplet'], 400);
             }
 
-            $this->service->handleWebhookEvent($event, $transactionId);
+            $this->service->handleWebhookEvent($event, (string) $transactionId);
 
             return response()->json(['success' => true]);
 
@@ -111,6 +136,14 @@ class PaiementWebhookController extends Controller
             return response()->json(['statut' => $commande->statut]);
         }
 
+        // Idempotence : déjà traité côté paiement (webhook passé avant)
+        if (in_array($commande->paiement->statut, ['bloque', 'libere', 'rembourse'])) {
+            if ($commande->statut === 'en_attente') {
+                $commande->update(['statut' => 'payee']);
+            }
+            return response()->json(['statut' => $commande->fresh()->statut]);
+        }
+
         if (in_array($commande->statut, ['payee', 'livree', 'cloturee', 'annulee', 'litige'])) {
             return response()->json(['statut' => $commande->statut]);
         }
@@ -119,7 +152,7 @@ class PaiementWebhookController extends Controller
             $transaction = Transaction::retrieve($commande->paiement->provider_reference);
 
             if (($transaction->status ?? null) === 'approved') {
-                if ((int) ($transaction->amount ?? 0) !== (int) $commande->montant) {
+                if (bccomp((string) ($transaction->amount ?? 0), (string) $commande->montant, 2) !== 0) {
                     Log::warning('Verify montant incohérent', ['commande_id' => $commande->id]);
                     return response()->json(['statut' => $commande->statut], 422);
                 }

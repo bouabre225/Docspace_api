@@ -191,6 +191,7 @@ class CommandeController extends Controller
 
         $favorisParAnnonce = \App\Models\Favori::join('annonces as a', 'a.id', '=', 'favoris.annonce_id')
             ->where('a.vendeur_id', $vendeurId)
+            ->when($debut, fn($q) => $q->where('favoris.created_at', '>=', $debut))
             ->selectRaw('a.id, count(*) as total')
             ->groupBy('a.id')->pluck('total', 'id');
         foreach ($parAnnonce as $row) {

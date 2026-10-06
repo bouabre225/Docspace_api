@@ -43,9 +43,11 @@ class KycDecisionMail extends Mailable
             ";
         }
 
+        $front = rtrim(config('app.frontend_url', config('app.url')), '/');
+
         $ctaHtml = $isValide
-            ? "<a href='http://localhost:5173' style='display:inline-block;margin-top:24px;padding:12px 28px;background:#1DBF73;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px'>Publier une annonce</a>"
-            : "<a href='http://localhost:5173/kyc' style='display:inline-block;margin-top:24px;padding:12px 28px;background:#e53e3e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px'>Soumettre un nouveau dossier</a>";
+            ? "<a href='" . $front . "' style='display:inline-block;margin-top:24px;padding:12px 28px;background:#1DBF73;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px'>Publier une annonce</a>"
+            : "<a href='" . $front . "/seller/kyc' style='display:inline-block;margin-top:24px;padding:12px 28px;background:#e53e3e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px'>Soumettre un nouveau dossier</a>";
 
         return $this->subject($subject)->html("
             <div style='font-family:sans-serif;max-width:520px;margin:auto;padding:32px;background:#f9f9f9;border-radius:12px'>

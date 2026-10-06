@@ -47,7 +47,19 @@ class AdminKycController
         $this->notificationService->notifierResultatKyc(
             $updated->user,
             $decision,
+            $commentaire,
         );
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($updated->user->email)
+                ->queue(new \App\Mail\KycDecisionMail(
+                    $updated->user->nom ?? $updated->user->email,
+                    $decision,
+                    $commentaire,
+                ));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Envoi mail décision KYC échoué', ['error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'message' => $decision === 'valide' ? 'KYC validé.' : 'KYC refusé.',

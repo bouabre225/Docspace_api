@@ -27,9 +27,7 @@ class MessageReceived implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        $channel = new PrivateChannel('conversation.' . (string) $this->message->recepteur_id);
-        Log::info('[BROADCAST] Broadcasting on channel', ['channel' => $channel]);
-        return [$channel];
+        return [new PrivateChannel('conversation.' . (string) $this->message->recepteur_id)];
     }
 
     public function broadcastWith(): array
@@ -43,7 +41,6 @@ class MessageReceived implements ShouldBroadcast
             'lu'            => (bool) $this->message->lu,
             'annonce_id'    => $this->message->annonce_id,
         ];
-        Log::info('[BROADCAST] Data sent', $data);
         return $data;
     }
 

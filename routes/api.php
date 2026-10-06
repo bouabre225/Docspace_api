@@ -30,7 +30,7 @@ Route::prefix('annonces')->group(function () {
 });
 
 // Stats publiques (totaux, cache 5 min)
-Route::get('/stats-public', [\App\Http\Controllers\admin\StatsController::class, 'public']);
+Route::get('/stats-public', [\App\Http\Controllers\admin\StatsController::class, 'public'])->middleware('throttle:60,1');
 
 // Authentification & Inscription
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -117,8 +117,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Favoris
     Route::get('/favoris', [FavoriController::class, 'index']);
-    Route::post('/annonces/{annonce}/favori', [FavoriController::class, 'toggle']);
-    Route::post('/favoris/sync', [FavoriController::class, 'sync']);
+    Route::post('/annonces/{annonce}/favori', [FavoriController::class, 'toggle'])->middleware('throttle:60,1');
+    Route::post('/favoris/sync', [FavoriController::class, 'sync'])->middleware('throttle:30,1');
 
     /* --- ESPACE VENDEUR --- */
     Route::middleware(['role:vendeur'])->group(function () {

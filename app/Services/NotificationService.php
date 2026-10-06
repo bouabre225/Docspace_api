@@ -18,13 +18,7 @@ class NotificationService
      */
     public function envoyer(User $user, string $type, string $contenu, array $options = []): void
     {
-        Log::info('NotificationService::envoyer appelé', [
-            'user_id' => $user->id,
-            'type'    => $type,
-            'contenu' => substr($contenu, 0, 50),
-            'trace'   => collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 6))
-                            ->pluck('function')->implode(' > '),
-        ]);
+        Log::debug('NotificationService::envoyer', ['user_id' => $user->id, 'type' => $type]);
         
         $canaux        = $options['canaux'] ?? ['push'];
         $referenceType = $options['reference_type'] ?? null;
@@ -135,13 +129,13 @@ class NotificationService
     {
         $contenu = $statut === 'valide'
             ? "Votre vérification d'identité a été approuvée. Vous pouvez maintenant publier des annonces."
-            : "Votre vérification d'identité a été refusée.";
+            : "Votre vérification d'identité a été refusée."
+              . ($commentaire ? " Motif : {$commentaire}" : '');
 
         $this->envoyer($vendeur, 'systeme', $contenu, [
             'canaux'         => ['push', 'email'],
             'reference_type' => 'kyc',
-            'metadata'       => ['statut' => $statut],
-            //'commentaire'    => $commentaire,
+            'metadata'       => ['statut' => $statut, 'commentaire' => $commentaire],
         ]);
     }
 
