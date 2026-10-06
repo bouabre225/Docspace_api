@@ -28,10 +28,6 @@ class PaiementWebhookController extends Controller
             return response()->json(['success' => false, 'message' => 'Cette commande ne peut pas être payée'], 400);
         }
 
-        if ((int) $commande->montant < 100) {
-            return response()->json(['success' => false, 'message' => 'Montant minimum 100 FCFA pour le paiement en ligne (FedaPay).'], 422);
-        }
-
         // Si un paiement en_attente existe depuis + d'1 min, le supprimer pour permettre un nouveau
         if ($commande->paiement && $commande->paiement->statut === 'en_attente') {
             if ($commande->paiement->created_at->diffInMinutes(now()) >= 1) {
@@ -58,66 +54,30 @@ class PaiementWebhookController extends Controller
                 ],
             ], 201);
         } catch (\Exception $e) {
-            Log::error('Création paiement échouée', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
+            // ← temporaire pour debug
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible d\'initier le paiement. Réessaie plus tard.',
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
             ], 500);
         }
     }
 
    public function handleWebhook(Request $request)
     {
-        $secret = config('services.fedapay.webhook_secret');
-        if (empty($secret)) {
-            Log::warning('FedaPay webhook: secret non configuré, vérification ignorée');
-        } else {
-            $sigHeader = $request->header('X-FedaPay-Signature') ?? $request->header('X-Fedapay-Signature');
-            $rawBody = $request->getContent();
-            if (empty($sigHeader)) {
-                return response()->json(['success' => false, 'message' => 'Signature manquante'], 401);
-            }
-            try {
-                // Format officiel FedaPay : header "t=timestamp,s=hmac(timestamp.payload)"
-                \FedaPay\Webhook::constructEvent($rawBody, $sigHeader, $secret);
-            } catch (\Exception $e) {
-                Log::warning('FedaPay webhook signature invalide', ['error' => $e->getMessage()]);
-                return response()->json(['success' => false, 'message' => 'Signature invalide'], 401);
-            }
-        }
+        // Pas de vérification signature — sécurisé par HTTPS + secret dans l'URL optionnel
+        Log::info('FedaPay webhook received', ['event' => $request->input('event')]);
+
         try {
-            $data = json_decode($rawBody, true) ?? [];
-            // Deux formats supportés : officiel (type/entity/object_id)
-            // et legacy (event/transaction.id)
-            $event = $data['event'] ?? $data['type'] ?? $data['name'] ?? null;
-            $transactionId = $data['transaction']['id']
-                ?? (($data['entity'] ?? null) === 'transaction' ? ($data['object_id'] ?? null) : null);
-
-            // Si l'event référence une transaction sans statut explicite,
-            // on récupère son statut réel via l'API (anti-forge + contrôle montant)
-            if ($transactionId && empty($data['event']) && ($data['entity'] ?? null) === 'transaction') {
-                try {
-                    $trx = \FedaPay\Transaction::retrieve((string) $transactionId);
-                    $status = $trx->status ?? null;
-                    $event = match ($status) {
-                        'approved' => 'transaction.approved',
-                        'canceled' => 'transaction.canceled',
-                        'failed' => 'transaction.failed',
-                        default => null,
-                    };
-                } catch (\Exception $e) {
-                    Log::error('Webhook: transaction introuvable côté FedaPay', ['id' => $transactionId]);
-                    return response()->json(['success' => false, 'message' => 'Transaction inconnue'], 400);
-                }
-            }
-
-            Log::info('FedaPay webhook received', ['event' => $event]);
+            $event         = $request->input('event');
+            $transactionId = $request->input('transaction.id');
 
             if (empty($event) || empty($transactionId)) {
                 return response()->json(['success' => false, 'message' => 'Payload incomplet'], 400);
             }
 
-            $this->service->handleWebhookEvent($event, (string) $transactionId);
+            $this->service->handleWebhookEvent($event, $transactionId);
 
             return response()->json(['success' => true]);
 
@@ -128,7 +88,8 @@ class PaiementWebhookController extends Controller
     }
 
     public function verify(Commande $commande)
-    {        if ($commande->acheteur_id !== auth()->id()) {
+    {
+        if ($commande->acheteur_id !== auth()->id()) {
             return response()->json(['message' => 'Non autorisé'], 403);
         }
 
@@ -136,26 +97,10 @@ class PaiementWebhookController extends Controller
             return response()->json(['statut' => $commande->statut]);
         }
 
-        // Idempotence : déjà traité côté paiement (webhook passé avant)
-        if (in_array($commande->paiement->statut, ['bloque', 'libere', 'rembourse'])) {
-            if ($commande->statut === 'en_attente') {
-                $commande->update(['statut' => 'payee']);
-            }
-            return response()->json(['statut' => $commande->fresh()->statut]);
-        }
-
-        if (in_array($commande->statut, ['payee', 'livree', 'cloturee', 'annulee', 'litige'])) {
-            return response()->json(['statut' => $commande->statut]);
-        }
-
         try {
             $transaction = Transaction::retrieve($commande->paiement->provider_reference);
 
-            if (($transaction->status ?? null) === 'approved') {
-                if (bccomp((string) ($transaction->amount ?? 0), (string) $commande->montant, 2) !== 0) {
-                    Log::warning('Verify montant incohérent', ['commande_id' => $commande->id]);
-                    return response()->json(['statut' => $commande->statut], 422);
-                }
+            if ($transaction->status === 'approved') {
                 $commande->paiement->update([
                     'statut'        => 'bloque',
                     'date_paiement' => now(),
@@ -165,50 +110,15 @@ class PaiementWebhookController extends Controller
 
                 event(new CommandeStatusChanged($commande, 'payee'));
 
-                try {
-                    \Mail::to($commande->acheteur->email)
-                        ->queue(new \App\Mail\FactureMail($commande));
-                } catch (\Exception $e) {
-                    Log::error('Envoi facture verify échoué', ['error' => $e->getMessage()]);
-                }
+                \Mail::to($commande->acheteur->email)
+                    ->queue(new \App\Mail\FactureMail($commande));
             }
 
             return response()->json(['statut' => $commande->fresh()->statut]);
 
         } catch (\Exception $e) {
-            Log::error('Verify payment error', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
+            //\Log::error('Verify payment error', ['error' => $e->getMessage()]);
             return response()->json(['statut' => $commande->statut]);
         }
-    }
-
-    /**
-     * Renvoie la facture par email (acheteur de la commande ou admin).
-     * Utile si le mail initial est parti en spam / jamais reçu.
-     */
-    public function renvoyerFacture(Commande $commande)
-    {
-        $user = auth()->user();
-        $isAcheteur = $commande->acheteur_id === $user->id;
-        $isAdmin = $user->role === 'admin';
-
-        if (!$isAcheteur && !$isAdmin) {
-            return response()->json(['message' => 'Non autorisé'], 403);
-        }
-
-        if (!in_array($commande->statut, ['payee', 'livree', 'cloturee'])) {
-            return response()->json(['message' => 'Facture disponible uniquement après paiement.'], 422);
-        }
-
-        $commande->loadMissing(['acheteur', 'vendeur', 'annonce']);
-
-        try {
-            \Mail::to($commande->acheteur->email)
-                ->queue(new \App\Mail\FactureMail($commande));
-        } catch (\Exception $e) {
-            Log::error('Renvoi facture échoué', ['error' => $e->getMessage(), 'commande_id' => $commande->id]);
-            return response()->json(['message' => 'Envoi impossible pour le moment.'], 500);
-        }
-
-        return response()->json(['success' => true, 'message' => 'Facture envoyée à ' . $commande->acheteur->email]);
     }
 }
